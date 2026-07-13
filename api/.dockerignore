@@ -1,0 +1,6 @@
+.git
+.gitignore
+runtime/*
+web/assets/*
+tests/_output/*
+vendor
