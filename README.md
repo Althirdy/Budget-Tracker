@@ -7,21 +7,18 @@ Use the root `docker-compose.yml` as the source of truth for local development. 
 ## Prerequisites
 
 - Docker Desktop
-- Windows PowerShell
 - Standalone `docker-compose`
 
 ## First-Time Setup
 
-From the project root:
+From the project root, install dependencies inside Docker and start the stack:
 
 ```powershell
+docker-compose run --rm frontend npm ci
 docker-compose up -d --build
-```
-
-Run Yii2 migrations after the containers are running:
-
-```powershell
-docker-compose exec api php yii migrate
+docker-compose exec api composer install
+docker-compose exec api sh -c "mkdir -p runtime web/assets && chown -R www-data:www-data runtime web/assets"
+docker-compose exec api php yii migrate --interactive=0
 ```
 
 Check the stack:
@@ -48,6 +45,12 @@ Stop the stack:
 
 ```powershell
 docker-compose down
+```
+
+Check the stack:
+
+```powershell
+docker-compose ps
 ```
 
 Rebuild after Dockerfile or dependency changes:

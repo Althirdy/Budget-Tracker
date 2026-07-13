@@ -1,6 +1,6 @@
 # Setup Guide
 
-This guide is for new developers running the project on Windows with Docker Desktop and PowerShell.
+This guide is for new developers running the project with Docker Desktop or Docker Engine.
 
 ## Stack Overview
 
@@ -18,31 +18,47 @@ Use only the root `docker-compose.yml` for this project.
 Local MySQL settings:
 
 - Host from Yii2/Docker: `mysql`
-- Host from Windows tools: `localhost`
+- Host from local database tools: `localhost`
 - Port: `3306`
 - Database: `yii2app`
 - Username: `yii2`
 - Password: `yii2pass`
 - Root password: `rootpass`
 
-## First-Time Setup
+## Fresh Clone Setup
 
-From the project root:
+After cloning, dependencies are not included in Git:
+
+- `frontend/node_modules` is ignored and must be installed into Docker's `frontend_node_modules` volume.
+- `api/vendor` is ignored and must be installed with Composer inside the API container.
+
+From the project root, run these commands:
 
 ```powershell
+docker-compose run --rm frontend npm ci
 docker-compose up -d --build
-```
-
-Confirm the containers are running:
-
-```powershell
+docker-compose exec api composer install
+docker-compose exec api sh -c "mkdir -p runtime web/assets && chown -R www-data:www-data runtime web/assets"
+docker-compose exec api php yii migrate --interactive=0
 docker-compose ps
 ```
 
-Run Yii2 migrations:
+Then verify:
+
+Windows PowerShell:
 
 ```powershell
-docker-compose exec api php yii migrate
+Invoke-WebRequest -UseBasicParsing http://localhost:5173
+Invoke-WebRequest -UseBasicParsing http://localhost:8080
+Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/v1/health
+```
+
+Linux/macOS:
+
+```bash
+curl -i http://localhost:5173
+curl -i http://localhost:8080
+curl -i http://localhost:8080/api/v1/health
 ```
 
 Confirm the Yii2 console works:
@@ -59,7 +75,7 @@ Open or request these URLs:
 - Backend Yii2 app: `http://localhost:8080`
 - Backend health API: `http://localhost:8080/api/v1/health`
 
-PowerShell checks:
+Windows PowerShell checks:
 
 ```powershell
 Invoke-WebRequest -UseBasicParsing http://localhost:5173
@@ -67,7 +83,15 @@ Invoke-WebRequest -UseBasicParsing http://localhost:8080
 Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/v1/health
 ```
 
-## Common Commands
+Linux/macOS checks:
+
+```bash
+curl -i http://localhost:5173
+curl -i http://localhost:8080
+curl -i http://localhost:8080/api/v1/health
+```
+
+## Daily Commands
 
 Start existing containers:
 
