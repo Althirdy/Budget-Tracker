@@ -7,6 +7,11 @@ $config = [
     'id' => 'basic',
     'basePath' => dirname(__DIR__),
     'bootstrap' => ['log'],
+    'modules' => [
+        'auth' => [
+            'class' => \app\modules\auth\Module::class,
+        ],
+    ],
     'container' => [
         'singletons' => [
             \yii\mail\MailerInterface::class => [
@@ -25,6 +30,9 @@ $config = [
         'request' => [
             // !!! insert a secret key in the following (if it is empty) - this is required by cookie validation
             'cookieValidationKey' => 'uIkIWxT75hLzieTczRo6nGi9gnUFC4ZI',
+            'parsers' => [
+                'application/json' => \yii\web\JsonParser::class,
+            ],
         ],
         'cache' => [
             'class' => \yii\caching\FileCache::class,
@@ -52,6 +60,11 @@ $config = [
             'showScriptName' => false,
             'rules' => [
                 'GET api/v1/health' => 'api/health',
+                'POST api/v1/auth/login' => 'auth/auth/login',
+                'POST api/v1/auth/refresh' => 'auth/auth/refresh',
+                'POST api/v1/auth/logout' => 'auth/auth/logout',
+                'GET api/v1/auth/me' => 'auth/auth/me',
+                'OPTIONS api/v1/auth/<action:(login|refresh|logout|me)>' => 'auth/auth/options',
             ],
         ],
     ],

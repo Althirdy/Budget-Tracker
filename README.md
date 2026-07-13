@@ -32,6 +32,16 @@ docker-compose ps
 - Frontend: `http://localhost:5173`
 - Backend Yii2 app: `http://localhost:8080`
 - Backend health API: `http://localhost:8080/api/v1/health`
+- Swagger API docs: `http://localhost:8080/docs`
+
+## Local Development Login
+
+Migrations seed a local admin user:
+
+- Username: `admin`
+- Email: `admin@example.test`
+- Password: `admin123`
+- Role: `admin`
 
 ## Daily Commands
 
@@ -72,6 +82,13 @@ Run Yii2 console commands:
 
 ```powershell
 docker-compose exec api php yii
+```
+
+Run backend unit tests:
+
+```powershell
+docker-compose exec api vendor/bin/codecept build
+docker-compose exec api vendor/bin/codecept run Unit
 ```
 
 ## Documentation
