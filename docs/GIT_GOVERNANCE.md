@@ -80,6 +80,8 @@ Run the checks that match the files changed:
 docker-compose ps
 docker-compose exec api php yii
 docker-compose exec api php yii migrate
+docker-compose exec api vendor/bin/codecept build
+docker-compose exec api vendor/bin/codecept run Unit
 ```
 
 For frontend changes:

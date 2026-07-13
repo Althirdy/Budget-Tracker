@@ -1,0 +1,236 @@
+openapi: 3.0.3
+info:
+  title: Budget Tracker API
+  version: 1.0.0
+  description: API documentation for the Budget Tracker Yii2 backend.
+servers:
+  - url: http://localhost:8080
+    description: Local Docker backend
+tags:
+  - name: Health
+    description: Service health checks
+  - name: Auth
+    description: JWT authentication and refresh-token endpoints
+paths:
+  /api/v1/health:
+    get:
+      tags:
+        - Health
+      summary: Check API health
+      responses:
+        "200":
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: budget-tracker-api
+                  version:
+                    type: string
+                    example: v1
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Log in and receive token pair
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login succeeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Rotate refresh token and receive a new token pair
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: Refresh succeeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Revoke a refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: Logout succeeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/v1/auth/me:
+    get:
+      tags:
+        - Auth
+      summary: Get the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Authenticated user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Missing, invalid, or expired credentials
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - login
+        - password
+      properties:
+        login:
+          type: string
+          description: Username or email address.
+          example: admin
+        password:
+          type: string
+          format: password
+          example: admin123
+    RefreshRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          example: refresh-token-value
+    LogoutResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token valid for 15 minutes.
+        accessTokenExpiresAt:
+          type: string
+          format: date-time
+          example: "2026-07-13T12:00:00+00:00"
+        refreshToken:
+          type: string
+          description: Opaque refresh token valid for 2 hours.
+        refreshTokenExpiresAt:
+          type: string
+          format: date-time
+          example: "2026-07-13T13:45:00+00:00"
+        user:
+          $ref: "#/components/schemas/User"
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: admin@example.test
+        username:
+          type: string
+          example: admin
+        firstName:
+          type: string
+          example: Admin
+        lastName:
+          type: string
+          example: User
+        role:
+          type: integer
+          enum:
+            - 1
+            - 2
+          description: "1 = admin, 2 = user"
+          example: 1
+        roleName:
+          type: string
+          enum:
+            - admin
+            - user
+          example: admin
+    ErrorResponse:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Unauthorized
+        message:
+          type: string
+          example: Invalid or expired access token.
+        code:
+          type: integer
+          example: 0
+        status:
+          type: integer
+          example: 401
+        type:
+          type: string
+          example: yii\web\UnauthorizedHttpException

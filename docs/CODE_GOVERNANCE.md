@@ -27,6 +27,30 @@ The current reference endpoint is:
 GET /api/v1/health
 ```
 
+Authenticated endpoints use JWT Bearer tokens:
+
+```text
+Authorization: Bearer <accessToken>
+```
+
+Current auth endpoints:
+
+```text
+POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+POST /api/v1/auth/logout
+GET /api/v1/auth/me
+```
+
+Roles use integer values:
+
+```text
+1 = admin
+2 = user
+```
+
+Access tokens last 15 minutes. Refresh tokens last 2 hours and are stored in the database as hashes only.
+
 ## Backend Structure
 
 New backend features should use feature modules with strict internal layers:
@@ -94,7 +118,15 @@ Use this workflow for new backend endpoints:
 4. Add repository logic if persistence is more than simple ActiveRecord.
 5. Add a controller action that returns JSON.
 6. Register the route under `/api/v1`.
-7. Test the endpoint through `http://localhost:8080/api/v1/...`.
+7. Update `api/docs/openapi.yaml`.
+8. Test the endpoint through `http://localhost:8080/api/v1/...`.
+
+Run backend unit tests when API behavior changes:
+
+```powershell
+docker-compose exec api vendor/bin/codecept build
+docker-compose exec api vendor/bin/codecept run Unit
+```
 
 Migration commands:
 
@@ -170,6 +202,7 @@ Before finishing an API or frontend feature, confirm:
 
 - API routes are under `/api/v1`.
 - API responses are JSON.
+- API documentation is updated in `api/docs/openapi.yaml`.
 - Migrations are committed when schema changes.
 - Business logic is not buried in controllers.
 - Frontend API calls are not scattered through route files.

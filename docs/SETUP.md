@@ -51,6 +51,7 @@ Windows PowerShell:
 Invoke-WebRequest -UseBasicParsing http://localhost:5173
 Invoke-WebRequest -UseBasicParsing http://localhost:8080
 Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/v1/health
+Invoke-WebRequest -UseBasicParsing http://localhost:8080/docs
 ```
 
 Linux/macOS:
@@ -59,6 +60,7 @@ Linux/macOS:
 curl -i http://localhost:5173
 curl -i http://localhost:8080
 curl -i http://localhost:8080/api/v1/health
+curl -i http://localhost:8080/docs
 ```
 
 Confirm the Yii2 console works:
@@ -67,6 +69,17 @@ Confirm the Yii2 console works:
 docker-compose exec api php yii
 ```
 
+## Seeded Development User
+
+The migration setup seeds one admin account for local development:
+
+- Username: `admin`
+- Email: `admin@example.test`
+- Password: `admin123`
+- Role: `admin`
+
+Use this account with `POST /api/v1/auth/login` or from Swagger at `http://localhost:8080/docs`.
+
 ## Verify URLs
 
 Open or request these URLs:
@@ -74,6 +87,7 @@ Open or request these URLs:
 - Frontend: `http://localhost:5173`
 - Backend Yii2 app: `http://localhost:8080`
 - Backend health API: `http://localhost:8080/api/v1/health`
+- Swagger API docs: `http://localhost:8080/docs`
 
 Windows PowerShell checks:
 
@@ -81,6 +95,7 @@ Windows PowerShell checks:
 Invoke-WebRequest -UseBasicParsing http://localhost:5173
 Invoke-WebRequest -UseBasicParsing http://localhost:8080
 Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/v1/health
+Invoke-WebRequest -UseBasicParsing http://localhost:8080/docs
 ```
 
 Linux/macOS checks:
@@ -89,6 +104,7 @@ Linux/macOS checks:
 curl -i http://localhost:5173
 curl -i http://localhost:8080
 curl -i http://localhost:8080/api/v1/health
+curl -i http://localhost:8080/docs
 ```
 
 ## Daily Commands
@@ -136,6 +152,18 @@ Create a Yii2 migration:
 
 ```powershell
 docker-compose exec api php yii migrate/create create_example_table
+```
+
+Build Codeception support classes:
+
+```powershell
+docker-compose exec api vendor/bin/codecept build
+```
+
+Run backend unit tests:
+
+```powershell
+docker-compose exec api vendor/bin/codecept run Unit
 ```
 
 ## Troubleshooting

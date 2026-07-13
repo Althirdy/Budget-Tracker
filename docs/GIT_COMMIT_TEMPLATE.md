@@ -9,6 +9,8 @@
 # - [ ] docker-compose ps
 # - [ ] docker-compose exec api php yii
 # - [ ] docker-compose exec api php yii migrate
+# - [ ] docker-compose exec api vendor/bin/codecept build
+# - [ ] docker-compose exec api vendor/bin/codecept run Unit
 # - [ ] docker-compose exec frontend npm run check
 # - [ ] Manual endpoint/browser check
 #
