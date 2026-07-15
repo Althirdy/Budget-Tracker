@@ -12,6 +12,8 @@ use yii\db\ActiveRecord;
  * @property string $token_hash
  * @property string $expires_at
  * @property string|null $revoked_at
+ * @property string|null $family_id
+ * @property int|null $replaced_by_id
  * @property string $created_at
  * @property string $updated_at
  */
@@ -35,6 +37,11 @@ class UserRefreshToken extends ActiveRecord
             ->one();
     }
 
+    public static function findToken(string $token): self|null
+    {
+        return self::findOne(['token_hash' => self::hashToken($token)]);
+    }
+
     public function revoke(): bool
     {
         $now = gmdate('Y-m-d H:i:s');
@@ -42,5 +49,28 @@ class UserRefreshToken extends ActiveRecord
         $this->updated_at = $now;
 
         return $this->save(false, ['revoked_at', 'updated_at']);
+    }
+
+    public function revokeOnce(): bool
+    {
+        $now = gmdate('Y-m-d H:i:s');
+
+        return self::updateAll(
+            ['revoked_at' => $now, 'updated_at' => $now],
+            ['id' => $this->id, 'revoked_at' => null]
+        ) === 1;
+    }
+
+    public static function revokeFamily(string|null $familyId): void
+    {
+        if ($familyId === null || $familyId === '') {
+            return;
+        }
+
+        $now = gmdate('Y-m-d H:i:s');
+        self::updateAll(
+            ['revoked_at' => $now, 'updated_at' => $now],
+            ['family_id' => $familyId, 'revoked_at' => null]
+        );
     }
 }
