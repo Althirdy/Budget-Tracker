@@ -40,6 +40,7 @@ docker-compose up -d --build
 docker-compose exec api composer install
 docker-compose exec api sh -c "mkdir -p runtime web/assets && chown -R www-data:www-data runtime web/assets"
 docker-compose exec api php yii migrate --interactive=0
+docker-compose exec api php yii dev-seed/auth
 docker-compose ps
 ```
 
@@ -69,16 +70,16 @@ Confirm the Yii2 console works:
 docker-compose exec api php yii
 ```
 
-## Seeded Development User
+## Optional Development User
 
-The migration setup seeds one admin account for local development:
+Run `docker-compose exec api php yii dev-seed/auth` to create one admin account for local development:
 
 - Username: `admin`
 - Email: `admin@example.test`
 - Password: `admin123`
 - Role: `admin`
 
-Use this account with `POST /api/v1/auth/login` or from Swagger at `http://localhost:8080/docs`.
+Use this account from the Svelte login page. The seed command refuses to run outside the development environment.
 
 ## Verify URLs
 
