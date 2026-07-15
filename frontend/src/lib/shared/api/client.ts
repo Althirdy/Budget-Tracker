@@ -1,13 +1,14 @@
 import type { ApiErrorResponse } from "../type";
+import { env } from "$env/dynamic/public";
 
-const API = 'http://localhost:8080/api/v1';
+export const API = (env.PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1").replace(/\/$/, "");
 
 export async function apiFetch<T>(
     endpoint: string,
     options: RequestInit = {}
 ): Promise<T> {
-    console.log(API);
     const response = await fetch(`${API}/${endpoint}`, {
+        credentials: "include",
         headers: {
             "Content-Type": "application/json",
             ...options.headers
@@ -27,7 +28,7 @@ export async function apiFetch<T>(
         );
     }
 
-    return response.json();
+    return data as T;
 }
 
 export class ApiError extends Error {

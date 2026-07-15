@@ -219,7 +219,6 @@
 
 	--radius-4xl: calc(var(--radius) * 2.6);
 }
-/* 
 @layer base {
 
 	* {
@@ -238,5 +237,5 @@
 
 		@apply font-sans;
 
-	}
-} */
+}
+}
