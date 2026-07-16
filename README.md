@@ -19,6 +19,7 @@ docker-compose up -d --build
 docker-compose exec api composer install
 docker-compose exec api sh -c "mkdir -p runtime web/assets && chown -R www-data:www-data runtime web/assets"
 docker-compose exec api php yii migrate --interactive=0
+docker-compose exec api php yii dev-seed/auth
 ```
 
 Check the stack:
@@ -36,7 +37,7 @@ docker-compose ps
 
 ## Local Development Login
 
-Migrations seed a local admin user:
+Create the optional local-only admin with `php yii dev-seed/auth` inside the API container:
 
 - Username: `admin`
 - Email: `admin@example.test`

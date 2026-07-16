@@ -49,7 +49,7 @@ Roles use integer values:
 2 = user
 ```
 
-Access tokens last 15 minutes. Refresh tokens last 2 hours and are stored in the database as hashes only.
+Access tokens last 15 minutes and remain in frontend memory only. Refresh tokens last 2 hours, are stored in the database as hashes, rotate on use, and are delivered only through an HttpOnly SameSite cookie. Browser code must not place either token in local or session storage.
 
 ## Backend Structure
 

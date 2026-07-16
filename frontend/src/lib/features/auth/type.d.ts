@@ -11,7 +11,9 @@ export interface User {
 export interface LoginSuccessResponse {
     accessToken: string;
     accessTokenExpiresAt: string;
-    refreshToken: string;
-    refreshTokenExpiresAt: string;
+    user: User;
+}
+
+export interface MeResponse {
     user: User;
 }

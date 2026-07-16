@@ -19,24 +19,38 @@ use yii\web\UnauthorizedHttpException;
 
 class AuthService
 {
-    public function login(string $login, string $password): array
+    public function login(string $login, string $password, string $ipAddress = 'unknown'): array
     {
+        $throttle = new LoginThrottleService();
+        $throttle->assertAllowed($login, $ipAddress);
         $user = User::findByLogin($login);
         if ($user === null || !Yii::$app->security->validatePassword($password, $user->password_hash)) {
+            $throttle->recordFailure($login, $ipAddress);
+            Yii::warning('Authentication failed for login hash ' . hash('sha256', mb_strtolower($login)), 'auth');
             throw new UnauthorizedHttpException('Invalid login or password.');
         }
+
+        $throttle->clearAccount($login);
 
         $user->last_login_at = new Expression('CURRENT_TIMESTAMP');
         $user->updated_at = new Expression('CURRENT_TIMESTAMP');
         $user->save(false, ['last_login_at', 'updated_at']);
+
+        Yii::info('Authentication succeeded for user ' . $user->id, 'auth');
 
         return $this->issueTokenPair($user);
     }
 
     public function refresh(string $refreshToken): array
     {
-        $storedToken = UserRefreshToken::findValidToken($refreshToken);
-        if ($storedToken === null) {
+        $storedToken = UserRefreshToken::findToken($refreshToken);
+        if ($storedToken === null || strtotime($storedToken->expires_at) <= time()) {
+            throw new UnauthorizedHttpException('Invalid or expired refresh token.');
+        }
+
+        if ($storedToken->revoked_at !== null) {
+            UserRefreshToken::revokeFamily($storedToken->family_id);
+            Yii::warning('Refresh token reuse detected for family ' . hash('sha256', (string) $storedToken->family_id), 'auth');
             throw new UnauthorizedHttpException('Invalid or expired refresh token.');
         }
 
@@ -48,22 +62,37 @@ class AuthService
 
         $transaction = Yii::$app->db->beginTransaction();
         try {
-            $storedToken->revoke();
-            $tokenPair = $this->issueTokenPair($user);
+            if (!$storedToken->revokeOnce()) {
+                UserRefreshToken::revokeFamily($storedToken->family_id);
+                $transaction->commit();
+                throw new UnauthorizedHttpException('Invalid or expired refresh token.');
+            }
+
+            $tokenPair = $this->issueTokenPair($user, $storedToken->family_id);
+            $storedToken->replaced_by_id = $tokenPair['refreshTokenId'];
+            $storedToken->save(false, ['replaced_by_id']);
             $transaction->commit();
+
+            unset($tokenPair['refreshTokenId']);
 
             return $tokenPair;
         } catch (Throwable $exception) {
-            $transaction->rollBack();
+            if ($transaction->getIsActive()) {
+                $transaction->rollBack();
+            }
             throw $exception;
         }
     }
 
     public function logout(string $refreshToken): array
     {
-        $storedToken = UserRefreshToken::findValidToken($refreshToken);
+        $storedToken = UserRefreshToken::findToken($refreshToken);
         if ($storedToken !== null) {
-            $storedToken->revoke();
+            UserRefreshToken::revokeFamily($storedToken->family_id);
+            if ($storedToken->family_id === null) {
+                $storedToken->revoke();
+            }
+            Yii::info('Session logged out for user ' . $storedToken->user_id, 'auth');
         }
 
         return ['success' => true];
@@ -82,7 +111,11 @@ class AuthService
         }
 
         $userId = $payload->sub ?? null;
-        if ($userId === null) {
+        if (
+            $userId === null
+            || ($payload->iss ?? null) !== $this->issuer()
+            || ($payload->aud ?? null) !== $this->audience()
+        ) {
             throw new UnauthorizedHttpException('Invalid access token subject.');
         }
 
@@ -94,7 +127,7 @@ class AuthService
         return $user;
     }
 
-    public function issueTokenPair(User $user): array
+    public function issueTokenPair(User $user, string|null $familyId = null): array
     {
         $accessTokenExpiresAt = time() + $this->accessTtl();
         $refreshTokenExpiresAt = time() + $this->refreshTtl();
@@ -103,6 +136,7 @@ class AuthService
         $storedRefreshToken = new UserRefreshToken([
             'user_id' => $user->id,
             'token_hash' => UserRefreshToken::hashToken($refreshToken),
+            'family_id' => $familyId ?? Yii::$app->security->generateRandomString(48),
             'expires_at' => gmdate('Y-m-d H:i:s', $refreshTokenExpiresAt),
             'created_at' => new Expression('CURRENT_TIMESTAMP'),
             'updated_at' => new Expression('CURRENT_TIMESTAMP'),
@@ -116,6 +150,7 @@ class AuthService
             'accessToken' => $this->createAccessToken($user, $accessTokenExpiresAt),
             'accessTokenExpiresAt' => $this->formatTimestamp($accessTokenExpiresAt),
             'refreshToken' => $refreshToken,
+            'refreshTokenId' => (int) $storedRefreshToken->id,
             'refreshTokenExpiresAt' => $this->formatTimestamp($refreshTokenExpiresAt),
             'user' => UserResource::toArray($user),
         ];
@@ -126,8 +161,8 @@ class AuthService
         $now = time();
 
         return JWT::encode([
-            'iss' => 'budget-tracker-api',
-            'aud' => 'budget-tracker-frontend',
+            'iss' => $this->issuer(),
+            'aud' => $this->audience(),
             'iat' => $now,
             'nbf' => $now,
             'exp' => $expiresAt,
@@ -139,6 +174,16 @@ class AuthService
     private function jwtSecret(): string
     {
         return (string) Yii::$app->params['jwt']['secret'];
+    }
+
+    private function issuer(): string
+    {
+        return (string) Yii::$app->params['jwt']['issuer'];
+    }
+
+    private function audience(): string
+    {
+        return (string) Yii::$app->params['jwt']['audience'];
     }
 
     private function accessTtl(): int

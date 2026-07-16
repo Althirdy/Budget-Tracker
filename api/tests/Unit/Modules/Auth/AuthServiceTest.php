@@ -80,6 +80,23 @@ final class AuthServiceTest extends \Codeception\Test\Unit
         $service->refresh($loginResponse['refreshToken']);
     }
 
+    public function testRefreshTokenReuseRevokesReplacementFamily(): void
+    {
+        $user = $this->createUser(User::ROLE_USER, 'secret123');
+        $service = new AuthService();
+        $loginResponse = $service->login($user->username, 'secret123');
+        $refreshResponse = $service->refresh($loginResponse['refreshToken']);
+
+        try {
+            $service->refresh($loginResponse['refreshToken']);
+        } catch (UnauthorizedHttpException) {
+            // Expected replay detection.
+        }
+
+        $this->expectException(UnauthorizedHttpException::class);
+        $service->refresh($refreshResponse['refreshToken']);
+    }
+
     public function testLogoutRevokesRefreshToken(): void
     {
         $user = $this->createUser(User::ROLE_ADMIN, 'secret123');
