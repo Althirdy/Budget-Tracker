@@ -57,3 +57,25 @@ React -> POST /api/v1/auth/logout
 ```
 
 The browser session uses Laravel Sanctum cookies. React never stores JWTs, access tokens, passwords, or the authenticated user in localStorage.
+
+## Reference CRUD Slice: Categories
+
+Categories are the reference implementation for authenticated CRUD features.
+
+```text
+Request
+  -> Form Request validation
+  -> Category Controller
+  -> Application Action
+  -> User-scoped Eloquent relationship
+  -> Category Resource
+  -> typed React API
+  -> feature state hook
+  -> Category page and dialogs
+```
+
+Laravel keeps category transport code under `Features/Categories/Http`, workflows under `Application/Actions`, and closed business values under `Domain`. Basic Eloquent persistence remains on the shared `Category` model; add an Infrastructure repository only when persistence becomes genuinely complex.
+
+React keeps category API calls, contracts, schemas, state, components, and pages under `features/categories`. Reusable Dialog, Select, Table, and Badge primitives remain under `components/ui` and must not import Category code.
+
+Every category query begins from `User::categories()`. Controllers never accept `user_id`, and cross-user identifiers return 404. Deletion uses Laravel soft deletes so future transactions can retain historical category references.
