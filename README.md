@@ -65,4 +65,4 @@ docker-compose exec client npm run lint
 docker-compose exec client npm run build
 ```
 
-See [docs/SETUP.md](docs/SETUP.md) for environment settings, dependency management, migrations, database resets, and troubleshooting.
+See [docs/SETUP.md](docs/SETUP.md) for environment settings, dependency management, migrations, database resets, and troubleshooting. New contributors should also read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before adding a feature.
