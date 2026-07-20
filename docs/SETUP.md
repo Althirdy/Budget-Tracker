@@ -1,62 +1,183 @@
-# Windows Development Setup
+# Windows Local Development Setup
 
-This guide takes a new developer from a clean Windows laptop to a running Budget Tracker stack. All project runtimes and services execute inside Docker.
+This guide starts from a clean Windows desktop and ends with all four Tally services running. Complete each step in order.
 
-## 1. Install Prerequisites
+All application runtimes execute inside Docker. Do not install PHP, Composer, Node.js, npm, MySQL, or Nginx on Windows.
 
-Install [Git for Windows](https://git-scm.com/download/win) and [Docker Desktop](https://www.docker.com/products/docker-desktop/). Start Docker Desktop and wait until its engine is running. Docker Desktop must use Linux containers.
+## Step 1: Install the Required Tools
 
-Open PowerShell and verify:
+Install:
+
+1. [Git for Windows](https://git-scm.com/download/win)
+2. [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+3. Windows PowerShell 5.1 or newer
+
+Start Docker Desktop. Wait until its engine is running and confirm it is using Linux containers.
+
+Open PowerShell and verify the tools:
 
 ```powershell
 git --version
 docker version
-docker-compose version
+docker compose version
 ```
 
-If your installation uses Compose v2, `docker compose version` replaces the final command. The setup script detects either form automatically.
+If the final command is unavailable but `docker-compose version` works, replace `docker compose` with `docker-compose` in manual commands. The setup script detects either version automatically.
 
-Ports `5173` and `8080` must be available.
+Do not continue until `docker version` shows both Client and Server information.
 
-## 2. Clone and Run
+## Step 2: Check for an Older Local Installation
 
-Use the public HTTPS remote; the maintainer's `github-side` SSH hostname is machine-specific.
+### Scenario A: Clean laptop
+
+If this is the first time you have run Budget Tracker or Trio Expense, continue to Step 3.
+
+### Scenario B: Old containers exist
+
+List possible old containers:
 
 ```powershell
+docker ps -a --filter "name=budget_tracker" --filter "name=trio_expense"
+```
+
+If the list contains old application containers, remove only those containers:
+
+```powershell
+docker rm -f budget_tracker_client budget_tracker_api budget_tracker_api_nginx budget_tracker_mysql
+docker rm -f trio_expense_frontend
+```
+
+An error saying a named container does not exist is harmless. Container removal does not delete named volumes, so existing MySQL data remains available.
+
+If another old container name appears in the filtered list, copy that exact name from the `NAMES` column and run:
+
+```powershell
+docker rm -f EXACT_CONTAINER_NAME
+```
+
+Do not use broad cleanup commands such as:
+
+```text
+docker system prune
+docker container prune
+docker volume prune
+```
+
+Those commands may affect unrelated projects.
+
+### Scenario C: An existing Budget Tracker clone is running
+
+From that existing repository folder, stop its Compose stack safely:
+
+```powershell
+docker compose down --remove-orphans
+```
+
+This preserves named volumes and database contents. Afterward, continue with the clone you intend to use.
+
+## Step 3: Clone the Repository
+
+Choose a workspace such as your Windows Desktop:
+
+```powershell
+Set-Location "$env:USERPROFILE\Desktop"
 git clone https://github.com/Althirdy/Budget-Tracker.git
 Set-Location Budget-Tracker
+```
+
+Confirm that you are in the correct folder:
+
+```powershell
+Get-Location
+Get-ChildItem
+```
+
+The folder must contain `api`, `client`, `scripts`, and `docker-compose.yml`.
+
+## Step 4: Run the One-Command Setup
+
+Run:
+
+```powershell
 .\scripts\setup.ps1
 ```
 
-The script:
+The script performs these operations in order:
 
-1. Checks Docker and required ports.
-2. Copies `api/.env.example` to `api/.env` and `client/.env.example` to `client/.env` only when missing.
-3. Builds the PHP and Node images.
-4. Runs Composer and `npm ci` inside Docker.
-5. Starts React, PHP-FPM, Nginx, and MySQL.
-6. Generates `APP_KEY` only when it is empty.
-7. Runs migrations and the repeatable development seeder.
-8. Verifies the client and API.
+1. Verifies Docker Desktop and Compose.
+2. Confirms ports `5173` and `8080` are available.
+3. Creates `api/.env` and `client/.env` from committed examples when missing.
+4. Builds the Laravel and React images.
+5. Installs Composer packages and exact npm lockfile dependencies inside Docker.
+6. Starts React, PHP-FPM, Nginx, and MySQL.
+7. Generates Laravel's key only when the key is empty.
+8. Runs database migrations and local development seeders.
+9. Checks the client and API health endpoint.
 
-It is safe to rerun. It does not overwrite environment files, regenerate an existing key, delete volumes, or reset the database.
+The first run can take several minutes. Do not interrupt it while images or dependencies are being downloaded.
 
-### PowerShell execution policy
+The setup is safely rerunnable. It preserves existing `.env` files, `APP_KEY`, dependency volumes, and MySQL data.
 
-If Windows blocks the script, allow it for only the current PowerShell process:
+### If PowerShell blocks the script
+
+Allow scripts for only the current PowerShell window:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\scripts\setup.ps1
 ```
 
-This does not permanently change the machine policy.
+Closing the PowerShell window removes this temporary policy change.
 
-## 3. Environment Configuration
+## Step 5: Verify the Containers
 
-Local Docker defaults are already committed in the example files, so a new hire does not need to edit them.
+Run:
 
-Laravel uses:
+```powershell
+docker compose ps
+```
+
+Expected services:
+
+| Service | Purpose | Expected state |
+| --- | --- | --- |
+| `client` | React/Vite | Running and healthy |
+| `api` | Laravel PHP-FPM | Running and healthy |
+| `api_nginx` | Laravel web server | Running and healthy |
+| `mysql` | MySQL 8.4 | Running and healthy |
+
+Container names are `budget_tracker_client`, `budget_tracker_api`, `budget_tracker_api_nginx`, and `budget_tracker_mysql`.
+
+If a service is missing or unhealthy:
+
+```powershell
+docker compose ps -a
+docker compose logs --tail=200 client api api_nginx mysql
+```
+
+## Step 6: Verify the Application
+
+Open these addresses:
+
+- Tally client: <http://localhost:5173>
+- Laravel API health: <http://localhost:8080/api/v1/health>
+
+The health endpoint should return JSON containing `"status": "ok"`.
+
+Sign in:
+
+```text
+Email:    test@example.com
+Password: password
+```
+
+The local seeder creates this account and sample income and expense categories.
+
+## Step 7: Understand the Environment Files
+
+No manual `.env` editing is required for normal onboarding.
+
+Laravel Docker defaults:
 
 ```env
 APP_URL=http://localhost:8080
@@ -69,203 +190,199 @@ DB_USERNAME=budget_user
 DB_PASSWORD=budget_password
 ```
 
-`DB_HOST` must be `mysql`, the Compose service name. `localhost` from inside the API container would refer to that API container, not the database.
-
-The client uses:
+React uses:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8080/api/v1
 ```
 
-Real `.env` files are ignored by Git. Commit changes to `.env.example` when the whole team needs a new variable, but never commit real secrets. Restart affected containers after changing environment values:
+`DB_HOST=mysql` is required because Laravel connects to the Compose service. Inside the API container, `localhost` would mean the API container itself.
+
+Real `.env` files are local-only and ignored by Git. Never commit them. Team-wide default changes belong in `.env.example`.
+
+## Step 8: Daily Development
+
+Always run commands from the repository root.
+
+Start the stack:
 
 ```powershell
-docker-compose up -d --force-recreate api client
+docker compose up -d
 ```
 
-## 4. Services and URLs
-
-| Service | Purpose | Local address |
-| --- | --- | --- |
-| `client` | React/Vite development server | <http://localhost:5173> |
-| `api_nginx` | Public web server for Laravel | <http://localhost:8080> |
-| `api` | PHP-FPM Laravel runtime | Internal port `9000` |
-| `mysql` | MySQL 8.4 database | Internal port `3306` |
-
-Request flow:
-
-```text
-Browser -> React/Vite
-Browser -> Nginx -> Laravel PHP-FPM -> MySQL
-```
-
-Health endpoint:
+Check status:
 
 ```powershell
-Invoke-RestMethod http://localhost:8080/api/v1/health
+docker compose ps
 ```
 
-## 5. Daily Workflow
-
-Start, inspect, and stop:
+Follow logs:
 
 ```powershell
-docker-compose up -d
-docker-compose ps
-docker-compose logs -f
-docker-compose down
+docker compose logs -f
+```
+
+Stop the stack while preserving data:
+
+```powershell
+docker compose down
+```
+
+Rebuild after a Dockerfile change:
+
+```powershell
+docker compose up -d --build
 ```
 
 Service-specific logs:
 
 ```powershell
-docker-compose logs -f client
-docker-compose logs -f api
-docker-compose logs -f api_nginx
-docker-compose logs -f mysql
+docker compose logs -f client
+docker compose logs -f api
+docker compose logs -f api_nginx
+docker compose logs -f mysql
 ```
 
-Laravel commands:
+## Step 9: Laravel and React Commands
+
+Laravel:
 
 ```powershell
-docker-compose exec api php artisan
-docker-compose exec api php artisan migrate
-docker-compose exec api php artisan db:seed
-docker-compose exec api php artisan test
-docker-compose exec api php artisan tinker
+docker compose exec api php artisan migrate
+docker compose exec api php artisan db:seed
+docker compose exec api php artisan test
+docker compose exec api php artisan tinker
 ```
 
-Create a migration:
+Composer dependency changes:
 
 ```powershell
-docker-compose exec api php artisan make:migration create_example_table
+docker compose exec api composer require vendor/package
 ```
 
-Add or update a PHP dependency:
+React checks:
 
 ```powershell
-docker-compose exec api composer require vendor/package
+docker compose exec client npm run typecheck
+docker compose exec client npm run lint
+docker compose exec client npm run test
+docker compose exec client npm run build
 ```
 
-Client checks:
+Add or update a client dependency:
 
 ```powershell
-docker-compose exec client npm run typecheck
-docker-compose exec client npm run lint
-docker-compose exec client npm run build
+docker compose exec client npm install package-name
 ```
 
-Add a JavaScript dependency during development:
+Maintainers use `npm install` only when intentionally changing dependencies and commit both `client/package.json` and `client/package-lock.json`. Setup and fresh clones use `npm ci`, which installs the exact committed lockfile without rewriting it.
 
-```powershell
-docker-compose exec client npm install package-name
-```
+## Step 10: Manual Setup Fallback
 
-Maintainers use `npm install` when intentionally changing dependencies and commit both `client/package.json` and `client/package-lock.json`. Fresh clones and automated setup use `npm ci` to install the exact committed lockfile without changing it.
+Use this only when `scripts/setup.ps1` cannot run. Do not overwrite an existing `.env` or regenerate an established `APP_KEY`.
 
-## 6. Manual Setup Fallback
-
-Use this only if the setup script cannot run:
+For a fresh clone with no `.env` files:
 
 ```powershell
 Copy-Item api/.env.example api/.env
 Copy-Item client/.env.example client/.env
-docker-compose build
-docker-compose run --rm api composer install --no-interaction --prefer-dist
-docker-compose run --rm client npm ci
-docker-compose up -d --remove-orphans
-docker-compose exec api php artisan key:generate
-docker-compose exec api php artisan migrate --seed
-docker-compose ps
+docker compose build
+docker compose run --rm api composer install --no-interaction --prefer-dist
+docker compose run --rm client npm ci
+docker compose up -d --remove-orphans
+docker compose exec api php artisan key:generate
+docker compose exec api php artisan migrate --seed
+docker compose ps
 ```
 
-Do not copy over an existing `.env` or regenerate `APP_KEY` on an established environment.
+## Safe Cleanup Versus Database Reset
 
-## 7. Database Persistence and Reset
+### Remove and recreate containers while keeping data
 
-MySQL data persists in the `budget-tracker_mysql_data` Docker volume when containers stop or are recreated.
-
-Normal schema updates are non-destructive:
+Use this for stale containers, changed Compose configuration, or ordinary troubleshooting:
 
 ```powershell
-docker-compose exec api php artisan migrate
+docker compose down --remove-orphans
+docker compose up -d --build
 ```
 
-### Destructive local reset
+Named volumes remain intact.
 
-The following permanently deletes the local MySQL database. It does not remove Composer or npm dependency volumes:
+### Permanently reset the local database
+
+Only use this when local data can be discarded. The command below permanently deletes this project's MySQL volume:
 
 ```powershell
-docker-compose down
+docker compose down
+docker volume ls --filter "name=budget-tracker_mysql_data"
 docker volume rm budget-tracker_mysql_data
-docker-compose up -d
-docker-compose exec api php artisan migrate --seed
+docker compose up -d
+docker compose exec api php artisan migrate --seed
 ```
 
-Never run this when local data must be retained.
+Verify that the listed volume name is exactly `budget-tracker_mysql_data` before removing it. Never use `docker volume prune` for this task.
 
-## 8. Troubleshooting
+## Troubleshooting
 
 ### Docker engine or named-pipe error
 
-Start Docker Desktop and wait for the engine. Reopen PowerShell if the terminal still cannot access Docker.
+Start Docker Desktop and wait for the engine. Reopen PowerShell if Docker still cannot connect.
 
-### `docker compose` is unavailable
+### Container name already in use
 
-Use `docker-compose`. The setup script detects either version.
+Follow Step 2. List matching containers, remove the exact stale container names, and rerun setup.
+
+### Port 5173 or 8080 is already in use
+
+```powershell
+Get-NetTCPConnection -State Listen -LocalPort 5173,8080
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+```
+
+Stop only the application or container using the required port.
 
 ### Client container exits
 
-Its dependency volume may be empty:
+The npm dependency volume may be empty or stale:
 
 ```powershell
-docker-compose run --rm client npm ci
-docker-compose up -d client
-docker-compose logs client
+docker compose run --rm client npm ci
+docker compose up -d client
+docker compose logs --tail=200 client
 ```
 
 ### Composer extraction timeout
 
-Retry with a longer process timeout:
-
 ```powershell
-docker-compose run --rm -e COMPOSER_PROCESS_TIMEOUT=1200 api composer install --prefer-dist
+docker compose run --rm -e COMPOSER_PROCESS_TIMEOUT=1200 api composer install --prefer-dist
 ```
 
-### MySQL reports `Access denied`
+### MySQL says `Access denied`
 
-MySQL applies `MYSQL_*` variables only when initializing a new volume. If an obsolete local database can be discarded, follow the destructive reset section. Otherwise, preserve it and ask the team to migrate its users safely.
+MySQL applies `MYSQL_*` values only when creating a new database volume. Preserve the volume if its data matters. If it contains disposable development data, use the explicit database-reset procedure above.
 
-### Laravel reports `tempnam()` or cannot compile Blade views
-
-Rebuild the API image so its startup entrypoint repairs writable paths:
+### Laravel reports `tempnam()` or cannot compile views
 
 ```powershell
-docker-compose up -d --build api api_nginx
-docker-compose exec api php artisan optimize:clear
+docker compose up -d --build api api_nginx
+docker compose exec api php artisan optimize:clear
 ```
 
-### Orphaned Yii/Svelte containers
+### Orphan warning mentions `trio_expense_frontend`
+
+Remove that exact old container:
 
 ```powershell
-docker-compose up -d --remove-orphans
+docker rm -f trio_expense_frontend
+docker compose up -d --remove-orphans
 ```
 
-### Port already in use
-
-Find the listener:
+### Collect diagnostics for the team
 
 ```powershell
-Get-NetTCPConnection -State Listen -LocalPort 5173,8080
+docker compose ps -a
+docker compose logs --tail=200 client api api_nginx mysql
+docker ps -a --filter "name=budget_tracker" --filter "name=trio_expense"
 ```
 
-Stop the conflicting application, then rerun setup.
-
-### Collect diagnostics
-
-```powershell
-docker-compose ps -a
-docker-compose logs --tail=200 client api api_nginx mysql
-```
-
-Include that output when asking the team for help.
+Send the full output with a screenshot of the first error.
