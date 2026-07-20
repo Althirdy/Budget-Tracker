@@ -1,0 +1,40 @@
+import { Navigate, Route, Routes } from "react-router-dom"
+
+import { DashboardLayout } from "@/features/dashboard/layouts/dashboard-layout"
+import { OverviewPage } from "@/features/dashboard/pages/overview-page"
+import { PlaceholderPage } from "@/features/dashboard/pages/placeholder-page"
+import { LoginPage } from "@/features/auth/pages/login-page"
+import { GuestRoute } from "@/features/auth/routes/guest-route"
+import { ProtectedRoute } from "@/features/auth/routes/protected-route"
+import { useAuth } from "@/features/auth/model/auth-context"
+
+function HomeRedirect() {
+  const { status } = useAuth()
+
+  if (status === "loading") {
+    return null
+  }
+
+  return <Navigate replace to={status === "authenticated" ? "/dashboard" : "/login"} />
+}
+
+export function AppRouter() {
+  return (
+    <Routes>
+      <Route path="/" element={<HomeRedirect />} />
+      <Route element={<GuestRoute />}>
+        <Route path="/login" element={<LoginPage />} />
+      </Route>
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<OverviewPage />} />
+          <Route path="budgets" element={<PlaceholderPage title="Budgets" />} />
+          <Route path="transactions" element={<PlaceholderPage title="Transactions" />} />
+          <Route path="accounts" element={<PlaceholderPage title="Accounts" />} />
+          <Route path="settings" element={<PlaceholderPage title="Settings" />} />
+        </Route>
+      </Route>
+      <Route path="*" element={<HomeRedirect />} />
+    </Routes>
+  )
+}
