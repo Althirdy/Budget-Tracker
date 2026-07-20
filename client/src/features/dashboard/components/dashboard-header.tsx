@@ -2,7 +2,6 @@ import { LogOut, Moon, Sun } from "lucide-react"
 import { useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -14,18 +13,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { UserAvatar } from "@/components/user-avatar"
 import { useTheme } from "@/components/theme-provider"
 import { useAuth } from "@/features/auth/model/auth-context"
 import { getDashboardTitle } from "@/features/dashboard/model/navigation"
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part.charAt(0))
-    .join("")
-    .toUpperCase()
-}
 
 export function DashboardHeader() {
   const { pathname } = useLocation()
@@ -68,9 +59,14 @@ export function DashboardHeader() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-9 gap-2 px-2">
-              <Avatar className="size-7">
-                <AvatarFallback>{user ? initials(user.name) : "?"}</AvatarFallback>
-              </Avatar>
+              {user ? (
+                <UserAvatar
+                  userId={user.id}
+                  name={user.name}
+                  decorative
+                  className="size-7"
+                />
+              ) : null}
               <span className="hidden max-w-32 truncate text-xs sm:inline">{user?.name}</span>
             </Button>
           </DropdownMenuTrigger>
