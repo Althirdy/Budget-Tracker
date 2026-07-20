@@ -1,104 +1,68 @@
 # Budget Tracker
 
-Budget Tracker is a Docker-based development stack with a SvelteKit frontend, a Yii2 backend API, Nginx, and MySQL.
-
-Use the root `docker-compose.yml` as the source of truth for local development. The generated Yii2 Compose file inside `api/` is not used for this project.
+Budget Tracker is a Docker-based development stack using Laravel 12, React with TypeScript, Tailwind CSS, shadcn, Nginx, and MySQL 8.4.
 
 ## Prerequisites
 
-- Docker Desktop
-- Standalone `docker-compose`
+Install only:
+
+- [Git](https://git-scm.com/download/win)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) running Linux containers
+- Windows PowerShell 5.1 or newer
+
+PHP, Composer, Node, npm, Nginx, and MySQL run inside Docker and should not be installed for this project.
+
+Ports `5173` and `8080` must be available.
 
 ## First-Time Setup
 
-From the project root, install dependencies inside Docker and start the stack:
+Open PowerShell and run:
 
 ```powershell
-docker-compose run --rm frontend npm ci
-docker-compose up -d --build
-docker-compose exec api composer install
-docker-compose exec api sh -c "mkdir -p runtime web/assets && chown -R www-data:www-data runtime web/assets"
-docker-compose exec api php yii migrate --interactive=0
-docker-compose exec api php yii dev-seed/auth
+git clone https://github.com/Althirdy/Budget-Tracker.git
+Set-Location Budget-Tracker
+.\scripts\setup.ps1
 ```
 
-Check the stack:
+The setup script creates local environment files from the committed examples, builds the images, installs dependencies inside Docker, starts all services, generates Laravel's key, and runs migrations and development seeders. Existing `.env` files, application keys, and database volumes are preserved when the script is rerun.
 
-```powershell
-docker-compose ps
-```
+If PowerShell blocks the script, see [the detailed setup guide](docs/SETUP.md#powershell-execution-policy).
 
 ## Local URLs
 
-- Frontend: `http://localhost:5173`
-- Backend Yii2 app: `http://localhost:8080`
-- Backend health API: `http://localhost:8080/api/v1/health`
-- Swagger API docs: `http://localhost:8080/docs`
+- React client: <http://localhost:5173>
+- Laravel: <http://localhost:8080>
+- API health: <http://localhost:8080/api/v1/health>
 
-## Local Development Login
+Development account (local only):
 
-Create the optional local-only admin with `php yii dev-seed/auth` inside the API container:
-
-- Username: `admin`
-- Email: `admin@example.test`
-- Password: `admin123`
-- Role: `admin`
+- Email: `test@example.com`
+- Password: `password`
 
 ## Daily Commands
 
-Start the stack:
+This repository supports both modern `docker compose` and legacy `docker-compose`. The examples below use the command available in the current Windows environment.
 
 ```powershell
 docker-compose up -d
-```
-
-Stop the stack:
-
-```powershell
 docker-compose down
-```
-
-Check the stack:
-
-```powershell
 docker-compose ps
+docker-compose logs -f
 ```
 
-Rebuild after Dockerfile or dependency changes:
+After changing a Dockerfile:
 
 ```powershell
 docker-compose up -d --build
 ```
 
-View service logs:
+Run checks:
 
 ```powershell
-docker-compose logs frontend
-docker-compose logs api
-docker-compose logs api_nginx
-docker-compose logs mysql
+docker-compose exec api php artisan test
+docker-compose exec client npm run typecheck
+docker-compose exec client npm run lint
+docker-compose exec client npm run build
 ```
 
-Run Yii2 console commands:
-
-```powershell
-docker-compose exec api php yii
-```
-
-Run backend unit tests:
-
-```powershell
-docker-compose exec api vendor/bin/codecept build
-docker-compose exec api vendor/bin/codecept run Unit
-```
-
-## Documentation
-
-- Setup guide: [docs/SETUP.md](docs/SETUP.md)
-- Code governance: [docs/CODE_GOVERNANCE.md](docs/CODE_GOVERNANCE.md)
-- Git governance: [docs/GIT_GOVERNANCE.md](docs/GIT_GOVERNANCE.md)
-- Git commit template: [docs/GIT_COMMIT_TEMPLATE.md](docs/GIT_COMMIT_TEMPLATE.md)
-
-## Windows Docker Notes
-
-If Docker commands fail with an access or pipe permission error, make sure Docker Desktop is running and your terminal has permission to access Docker. If a command fails because `docker compose` is unavailable, use `docker-compose` instead.
+See [docs/SETUP.md](docs/SETUP.md) for environment settings, dependency management, migrations, database resets, and troubleshooting.

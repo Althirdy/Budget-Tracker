@@ -1,176 +1,271 @@
-# Setup Guide
+# Windows Development Setup
 
-This guide is for new developers running the project with Docker Desktop or Docker Engine.
+This guide takes a new developer from a clean Windows laptop to a running Budget Tracker stack. All project runtimes and services execute inside Docker.
 
-## Stack Overview
+## 1. Install Prerequisites
 
-The root `docker-compose.yml` runs these services:
+Install [Git for Windows](https://git-scm.com/download/win) and [Docker Desktop](https://www.docker.com/products/docker-desktop/). Start Docker Desktop and wait until its engine is running. Docker Desktop must use Linux containers.
 
-- `frontend`: SvelteKit development server on port `5173`
-- `api`: Yii2 PHP-FPM backend container
-- `api_nginx`: Nginx web server for Yii2 on port `8080`
-- `mysql`: MySQL 8 database with persistent Docker volume storage
-
-Use only the root `docker-compose.yml` for this project.
-
-## Local Database
-
-Local MySQL settings:
-
-- Host from Yii2/Docker: `mysql`
-- Host from local database tools: `localhost`
-- Port: `3306`
-- Database: `yii2app`
-- Username: `yii2`
-- Password: `yii2pass`
-- Root password: `rootpass`
-
-## Fresh Clone Setup
-
-After cloning, dependencies are not included in Git:
-
-- `frontend/node_modules` is ignored and must be installed into Docker's `frontend_node_modules` volume.
-- `api/vendor` is ignored and must be installed with Composer inside the API container.
-
-From the project root, run these commands:
+Open PowerShell and verify:
 
 ```powershell
-docker-compose run --rm frontend npm ci
-docker-compose up -d --build
-docker-compose exec api composer install
-docker-compose exec api sh -c "mkdir -p runtime web/assets && chown -R www-data:www-data runtime web/assets"
-docker-compose exec api php yii migrate --interactive=0
-docker-compose exec api php yii dev-seed/auth
-docker-compose ps
+git --version
+docker version
+docker-compose version
 ```
 
-Then verify:
+If your installation uses Compose v2, `docker compose version` replaces the final command. The setup script detects either form automatically.
 
-Windows PowerShell:
+Ports `5173` and `8080` must be available.
+
+## 2. Clone and Run
+
+Use the public HTTPS remote; the maintainer's `github-side` SSH hostname is machine-specific.
 
 ```powershell
-Invoke-WebRequest -UseBasicParsing http://localhost:5173
-Invoke-WebRequest -UseBasicParsing http://localhost:8080
-Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/v1/health
-Invoke-WebRequest -UseBasicParsing http://localhost:8080/docs
+git clone https://github.com/Althirdy/Budget-Tracker.git
+Set-Location Budget-Tracker
+.\scripts\setup.ps1
 ```
 
-Linux/macOS:
+The script:
 
-```bash
-curl -i http://localhost:5173
-curl -i http://localhost:8080
-curl -i http://localhost:8080/api/v1/health
-curl -i http://localhost:8080/docs
-```
+1. Checks Docker and required ports.
+2. Copies `api/.env.example` to `api/.env` and `client/.env.example` to `client/.env` only when missing.
+3. Builds the PHP and Node images.
+4. Runs Composer and `npm ci` inside Docker.
+5. Starts React, PHP-FPM, Nginx, and MySQL.
+6. Generates `APP_KEY` only when it is empty.
+7. Runs migrations and the repeatable development seeder.
+8. Verifies the client and API.
 
-Confirm the Yii2 console works:
+It is safe to rerun. It does not overwrite environment files, regenerate an existing key, delete volumes, or reset the database.
+
+### PowerShell execution policy
+
+If Windows blocks the script, allow it for only the current PowerShell process:
 
 ```powershell
-docker-compose exec api php yii
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\scripts\setup.ps1
 ```
 
-## Optional Development User
+This does not permanently change the machine policy.
 
-Run `docker-compose exec api php yii dev-seed/auth` to create one admin account for local development:
+## 3. Environment Configuration
 
-- Username: `admin`
-- Email: `admin@example.test`
-- Password: `admin123`
-- Role: `admin`
+Local Docker defaults are already committed in the example files, so a new hire does not need to edit them.
 
-Use this account from the Svelte login page. The seed command refuses to run outside the development environment.
+Laravel uses:
 
-## Verify URLs
+```env
+APP_URL=http://localhost:8080
+FRONTEND_URL=http://localhost:5173
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=budget_tracker
+DB_USERNAME=budget_user
+DB_PASSWORD=budget_password
+```
 
-Open or request these URLs:
+`DB_HOST` must be `mysql`, the Compose service name. `localhost` from inside the API container would refer to that API container, not the database.
 
-- Frontend: `http://localhost:5173`
-- Backend Yii2 app: `http://localhost:8080`
-- Backend health API: `http://localhost:8080/api/v1/health`
-- Swagger API docs: `http://localhost:8080/docs`
+The client uses:
 
-Windows PowerShell checks:
+```env
+VITE_API_BASE_URL=http://localhost:8080/api/v1
+```
+
+Real `.env` files are ignored by Git. Commit changes to `.env.example` when the whole team needs a new variable, but never commit real secrets. Restart affected containers after changing environment values:
 
 ```powershell
-Invoke-WebRequest -UseBasicParsing http://localhost:5173
-Invoke-WebRequest -UseBasicParsing http://localhost:8080
-Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/v1/health
-Invoke-WebRequest -UseBasicParsing http://localhost:8080/docs
+docker-compose up -d --force-recreate api client
 ```
 
-Linux/macOS checks:
+## 4. Services and URLs
 
-```bash
-curl -i http://localhost:5173
-curl -i http://localhost:8080
-curl -i http://localhost:8080/api/v1/health
-curl -i http://localhost:8080/docs
+| Service | Purpose | Local address |
+| --- | --- | --- |
+| `client` | React/Vite development server | <http://localhost:5173> |
+| `api_nginx` | Public web server for Laravel | <http://localhost:8080> |
+| `api` | PHP-FPM Laravel runtime | Internal port `9000` |
+| `mysql` | MySQL 8.4 database | Internal port `3306` |
+
+Request flow:
+
+```text
+Browser -> React/Vite
+Browser -> Nginx -> Laravel PHP-FPM -> MySQL
 ```
 
-## Daily Commands
+Health endpoint:
 
-Start existing containers:
+```powershell
+Invoke-RestMethod http://localhost:8080/api/v1/health
+```
+
+## 5. Daily Workflow
+
+Start, inspect, and stop:
 
 ```powershell
 docker-compose up -d
-```
-
-Stop containers:
-
-```powershell
+docker-compose ps
+docker-compose logs -f
 docker-compose down
 ```
 
-Rebuild containers:
+Service-specific logs:
 
 ```powershell
-docker-compose up -d --build
+docker-compose logs -f client
+docker-compose logs -f api
+docker-compose logs -f api_nginx
+docker-compose logs -f mysql
 ```
 
-Restart backend only:
+Laravel commands:
 
 ```powershell
-docker-compose restart api api_nginx
+docker-compose exec api php artisan
+docker-compose exec api php artisan migrate
+docker-compose exec api php artisan db:seed
+docker-compose exec api php artisan test
+docker-compose exec api php artisan tinker
 ```
 
-Show logs:
+Create a migration:
 
 ```powershell
-docker-compose logs frontend
-docker-compose logs api
-docker-compose logs api_nginx
-docker-compose logs mysql
+docker-compose exec api php artisan make:migration create_example_table
 ```
 
-Run a Yii2 migration:
+Add or update a PHP dependency:
 
 ```powershell
-docker-compose exec api php yii migrate
+docker-compose exec api composer require vendor/package
 ```
 
-Create a Yii2 migration:
+Client checks:
 
 ```powershell
-docker-compose exec api php yii migrate/create create_example_table
+docker-compose exec client npm run typecheck
+docker-compose exec client npm run lint
+docker-compose exec client npm run build
 ```
 
-Build Codeception support classes:
+Add a JavaScript dependency during development:
 
 ```powershell
-docker-compose exec api vendor/bin/codecept build
+docker-compose exec client npm install package-name
 ```
 
-Run backend unit tests:
+Maintainers use `npm install` when intentionally changing dependencies and commit both `client/package.json` and `client/package-lock.json`. Fresh clones and automated setup use `npm ci` to install the exact committed lockfile without changing it.
+
+## 6. Manual Setup Fallback
+
+Use this only if the setup script cannot run:
 
 ```powershell
-docker-compose exec api vendor/bin/codecept run Unit
+Copy-Item api/.env.example api/.env
+Copy-Item client/.env.example client/.env
+docker-compose build
+docker-compose run --rm api composer install --no-interaction --prefer-dist
+docker-compose run --rm client npm ci
+docker-compose up -d --remove-orphans
+docker-compose exec api php artisan key:generate
+docker-compose exec api php artisan migrate --seed
+docker-compose ps
 ```
 
-## Troubleshooting
+Do not copy over an existing `.env` or regenerate `APP_KEY` on an established environment.
 
-If `docker-compose ps` reports a Docker pipe permission error, confirm Docker Desktop is running and restart PowerShell.
+## 7. Database Persistence and Reset
 
-If port `5173`, `8080`, or `3306` is already in use, stop the conflicting local service or change the published port in the root `docker-compose.yml`.
+MySQL data persists in the `budget-tracker_mysql_data` Docker volume when containers stop or are recreated.
 
-If frontend live reload stops updating on Windows, confirm Vite polling is still enabled in `frontend/vite.config.ts`.
+Normal schema updates are non-destructive:
+
+```powershell
+docker-compose exec api php artisan migrate
+```
+
+### Destructive local reset
+
+The following permanently deletes the local MySQL database. It does not remove Composer or npm dependency volumes:
+
+```powershell
+docker-compose down
+docker volume rm budget-tracker_mysql_data
+docker-compose up -d
+docker-compose exec api php artisan migrate --seed
+```
+
+Never run this when local data must be retained.
+
+## 8. Troubleshooting
+
+### Docker engine or named-pipe error
+
+Start Docker Desktop and wait for the engine. Reopen PowerShell if the terminal still cannot access Docker.
+
+### `docker compose` is unavailable
+
+Use `docker-compose`. The setup script detects either version.
+
+### Client container exits
+
+Its dependency volume may be empty:
+
+```powershell
+docker-compose run --rm client npm ci
+docker-compose up -d client
+docker-compose logs client
+```
+
+### Composer extraction timeout
+
+Retry with a longer process timeout:
+
+```powershell
+docker-compose run --rm -e COMPOSER_PROCESS_TIMEOUT=1200 api composer install --prefer-dist
+```
+
+### MySQL reports `Access denied`
+
+MySQL applies `MYSQL_*` variables only when initializing a new volume. If an obsolete local database can be discarded, follow the destructive reset section. Otherwise, preserve it and ask the team to migrate its users safely.
+
+### Laravel reports `tempnam()` or cannot compile Blade views
+
+Rebuild the API image so its startup entrypoint repairs writable paths:
+
+```powershell
+docker-compose up -d --build api api_nginx
+docker-compose exec api php artisan optimize:clear
+```
+
+### Orphaned Yii/Svelte containers
+
+```powershell
+docker-compose up -d --remove-orphans
+```
+
+### Port already in use
+
+Find the listener:
+
+```powershell
+Get-NetTCPConnection -State Listen -LocalPort 5173,8080
+```
+
+Stop the conflicting application, then rerun setup.
+
+### Collect diagnostics
+
+```powershell
+docker-compose ps -a
+docker-compose logs --tail=200 client api api_nginx mysql
+```
+
+Include that output when asking the team for help.
