@@ -44,7 +44,7 @@ app -> features -> shared UI and infrastructure
 
 Shared code must not import from a feature. Avoid generic `services`, `helpers`, and `types` folders. Keep tests beside the feature behavior they verify.
 
-Authentication uses React Context because it is small session-wide client state. Add TanStack Query when accounts, budgets, and transactions introduce cacheable server state; do not place financial server data in Auth Context.
+Authentication uses React Context because it is small session-wide client state. Categories and Budgets currently keep isolated server state in feature hooks. Introduce TanStack Query when multiple financial features need shared caching and cross-feature invalidation; do not place financial server data in Auth Context.
 
 ## Authentication Flow
 
@@ -79,3 +79,17 @@ Laravel keeps category transport code under `Features/Categories/Http`, workflow
 React keeps category API calls, contracts, schemas, state, components, and pages under `features/categories`. Reusable Dialog, Select, Table, and Badge primitives remain under `components/ui` and must not import Category code.
 
 Every category query begins from `User::categories()`. Controllers never accept `user_id`, and cross-user identifiers return 404. Deletion uses Laravel soft deletes so future transactions can retain historical category references.
+
+## Monthly Budget Ownership
+
+Budgets demonstrate a child aggregate owned by both a user and a category:
+
+```text
+User 1 -> many Budgets
+Category 1 -> many Budgets across calendar months
+Budget -> one User and one expense Category
+```
+
+The database and application layer enforce one budget per user, category, and month. The client never submits `user_id`; all operations begin from `User::budgets()`. Budget deletion is permanent because transactions do not reference budget IDs. Archived categories remain available when loading historical budgets.
+
+Version one stores PHP planned amounts only. Spent, remaining, progress, and rollover calculations belong to the Transactions integration and must not be approximated in the Budget feature.

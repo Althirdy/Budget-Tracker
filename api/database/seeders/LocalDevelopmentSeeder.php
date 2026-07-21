@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Budget;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -40,6 +41,32 @@ final class LocalDevelopmentSeeder extends Seeder
                     'color' => $category['color'],
                     'icon' => $category['icon'],
                     'deleted_at' => null,
+                ],
+            );
+        }
+
+        $budgetAmounts = [
+            'Groceries' => '8000.00',
+            'Housing' => '15000.00',
+            'Transport' => '5000.00',
+            'Utilities' => '4000.00',
+        ];
+
+        foreach ($budgetAmounts as $categoryName => $amount) {
+            $category = $user->categories()
+                ->where('name', $categoryName)
+                ->where('type', 'expense')
+                ->firstOrFail();
+
+            Budget::query()->updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'category_id' => $category->id,
+                    'period' => now()->startOfMonth()->toDateString(),
+                ],
+                [
+                    'amount' => $amount,
+                    'currency' => 'PHP',
                 ],
             );
         }
