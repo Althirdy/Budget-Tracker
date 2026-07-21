@@ -101,3 +101,9 @@ Accounts follow the same authenticated vertical-slice flow as Categories. Every 
 Closed backend values such as account type and icon are PHP backed enums and are validated with `Rule::enum`. React mirrors these public API values with readonly constant arrays and derived TypeScript unions. The backend remains the source of truth; client constants provide compile-time safety and must be updated whenever the public enum contract changes.
 
 Accounts store an opening balance only. Credit-card opening balances are positive amounts owed. Current balances, transfers, adjustments, and reconciliation must be derived from the future Transactions feature rather than written directly to accounts.
+
+## User Feedback and API Errors
+
+CRUD API clients throw the shared `ApiError` contract with a user-facing message and Laravel field errors. A form maps recognized field errors to React Hook Form so messages appear beside the relevant input. Errors without a visible matching field, including restore and archive failures, use the global Sonner toast. Successful mutations also use concise toasts.
+
+Hooks remain notification-free: they return data or throw errors, while the component that owns the user action owns its notification. Blocking list-load failures remain inline with a retry action because they represent page state rather than transient feedback.

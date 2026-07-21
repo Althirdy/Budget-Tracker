@@ -2,14 +2,15 @@ import axios from "axios"
 
 import type { Account, AccountFilters, AccountPayload } from "@/features/accounts/model/account-types"
 import { httpClient } from "@/lib/http/client"
+import { ApiError } from "@/lib/http/api-error"
 
 interface AccountResponse { data: Account }
 interface AccountCollectionResponse { data: Account[] }
 interface ValidationErrorResponse { message?: string; errors?: Record<string, string[]> }
 
-export class AccountApiError extends Error {
-  constructor(message: string, public readonly fieldErrors: Record<string, string[]> = {}) {
-    super(message)
+export class AccountApiError extends ApiError {
+  constructor(message: string, fieldErrors: Record<string, string[]> = {}) {
+    super(message, fieldErrors)
     this.name = "AccountApiError"
   }
 }

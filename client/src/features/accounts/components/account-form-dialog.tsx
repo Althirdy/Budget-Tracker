@@ -1,9 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { LoaderCircle } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { Controller, useForm } from "react-hook-form"
+import { toast } from "sonner"
 
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -13,30 +13,31 @@ import { AccountApiError } from "@/features/accounts/api/accounts-api"
 import { accountIconLabels, accountIconMap, accountTypeLabels } from "@/features/accounts/model/account-icons"
 import { accountSchema, type AccountFormValues } from "@/features/accounts/model/account-schema"
 import { accountIcons, accountTypes, type Account, type AccountPayload } from "@/features/accounts/model/account-types"
+import { firstErrorMessage } from "@/lib/http/api-error"
 
 interface Props { open: boolean; account?: Account | null; onOpenChange: (open: boolean) => void; onSubmit: (payload: AccountPayload) => Promise<void> }
 const defaults: AccountFormValues = { name: "", type: "cash", opening_balance: "0.00", color: "#F97316", icon: "wallet" }
 
 export function AccountFormDialog({ open, account, onOpenChange, onSubmit }: Props) {
-  const [submitError, setSubmitError] = useState<string | null>(null)
   const { register, control, handleSubmit, reset, setError, setValue, watch, formState: { errors, isSubmitting } } = useForm<AccountFormValues>({ resolver: zodResolver(accountSchema), defaultValues: defaults })
-  useEffect(() => { reset(account ? { name: account.name, type: account.type, opening_balance: account.opening_balance, color: account.color, icon: account.icon } : defaults); setSubmitError(null) }, [account, open, reset])
+  useEffect(() => { reset(account ? { name: account.name, type: account.type, opening_balance: account.opening_balance, color: account.color, icon: account.icon } : defaults) }, [account, open, reset])
   const selectedColor = watch("color")
   const selectedType = watch("type")
 
   const submit = handleSubmit(async (values) => {
-    setSubmitError(null)
-    try { await onSubmit({ ...values, color: values.color.toUpperCase() }); onOpenChange(false) }
+    try { await onSubmit({ ...values, color: values.color.toUpperCase() }); onOpenChange(false); toast.success(account ? "Account updated" : "Account created") }
     catch (reason) {
       if (reason instanceof AccountApiError) {
-        Object.entries(reason.fieldErrors).forEach(([field, messages]) => { if (field in defaults) setError(field as keyof AccountFormValues, { message: messages[0] }) })
-        setSubmitError(Object.keys(reason.fieldErrors).length ? null : reason.message)
-      } else setSubmitError("Unable to save the account. Please try again.")
+        const entries = Object.entries(reason.fieldErrors)
+        const unmapped = entries.filter(([field]) => !(field in defaults))
+        entries.forEach(([field, messages]) => { if (field in defaults) setError(field as keyof AccountFormValues, { message: messages[0] }) })
+        if (!entries.length) toast.error(reason.message)
+        else if (unmapped.length) toast.error(unmapped.flatMap(([, messages]) => messages)[0] ?? firstErrorMessage(reason, "Unable to save the account."))
+      } else toast.error(firstErrorMessage(reason, "Unable to save the account. Please try again."))
     }
   })
 
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>{account ? "Edit account" : "Create account"}</DialogTitle><DialogDescription>Opening balances establish the starting point for future transactions.</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={submit}>
-    {submitError && <Alert variant="destructive"><AlertDescription>{submitError}</AlertDescription></Alert>}
     <div className="space-y-2"><Label htmlFor="account-name">Name</Label><Input id="account-name" autoFocus aria-invalid={Boolean(errors.name)} {...register("name")} />{errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}</div>
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="space-y-2"><Label>Type</Label><Controller name="type" control={control} render={({ field }) => <Select value={field.value} onValueChange={field.onChange}><SelectTrigger aria-label="Account type"><SelectValue /></SelectTrigger><SelectContent>{accountTypes.map((type) => <SelectItem key={type} value={type}>{accountTypeLabels[type]}</SelectItem>)}</SelectContent></Select>} /></div>

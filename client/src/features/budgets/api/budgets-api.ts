@@ -2,16 +2,17 @@ import axios from "axios"
 
 import type { Budget, BudgetListResult, CreateBudgetPayload, UpdateBudgetPayload } from "@/features/budgets/model/budget-types"
 import { httpClient } from "@/lib/http/client"
+import { ApiError } from "@/lib/http/api-error"
 
 interface BudgetResponse { data: Budget }
 interface ValidationErrorResponse { message?: string; errors?: Record<string, string[]> }
 
-export class BudgetApiError extends Error {
+export class BudgetApiError extends ApiError {
   constructor(
     message: string,
-    public readonly fieldErrors: Record<string, string[]> = {}
+    fieldErrors: Record<string, string[]> = {}
   ) {
-    super(message)
+    super(message, fieldErrors)
     this.name = "BudgetApiError"
   }
 }
