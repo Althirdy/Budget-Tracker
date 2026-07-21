@@ -1,9 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { LoaderCircle } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { Controller, useForm } from "react-hook-form"
+import { toast } from "sonner"
 
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -14,6 +14,7 @@ import type { Budget, CreateBudgetPayload } from "@/features/budgets/model/budge
 import { createBudgetSchema, type CreateBudgetFormValues } from "@/features/budgets/model/budget-schema"
 import { categoryIconMap } from "@/features/categories/model/category-icons"
 import type { Category } from "@/features/categories/model/category-types"
+import { firstErrorMessage } from "@/lib/http/api-error"
 
 interface BudgetFormDialogProps {
   open: boolean
@@ -26,7 +27,6 @@ interface BudgetFormDialogProps {
 }
 
 export function BudgetFormDialog({ open, period, budget, categories, onOpenChange, onCreate, onUpdate }: BudgetFormDialogProps) {
-  const [submitError, setSubmitError] = useState<string | null>(null)
   const { register, control, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<CreateBudgetFormValues>({
     resolver: zodResolver(createBudgetSchema),
     defaultValues: { categoryId: "", amount: "" },
@@ -34,11 +34,9 @@ export function BudgetFormDialog({ open, period, budget, categories, onOpenChang
 
   useEffect(() => {
     reset({ categoryId: budget ? String(budget.category.id) : "", amount: budget?.amount ?? "" })
-    setSubmitError(null)
   }, [budget, open, reset])
 
   const submit = handleSubmit(async (values) => {
-    setSubmitError(null)
     try {
       if (budget) {
         await onUpdate(budget.id, values.amount)
@@ -46,15 +44,18 @@ export function BudgetFormDialog({ open, period, budget, categories, onOpenChang
         await onCreate({ category_id: Number(values.categoryId), period, amount: values.amount })
       }
       onOpenChange(false)
+      toast.success(budget ? "Budget updated" : "Budget created")
     } catch (reason) {
       if (reason instanceof BudgetApiError) {
         const categoryMessage = reason.fieldErrors.category_id?.[0]
         const amountMessage = reason.fieldErrors.amount?.[0]
         if (categoryMessage) setError("categoryId", { message: categoryMessage })
         if (amountMessage) setError("amount", { message: amountMessage })
-        setSubmitError(categoryMessage || amountMessage ? null : reason.message)
+        const unmappedFields = Object.keys(reason.fieldErrors).filter((field) => field !== "category_id" && field !== "amount")
+        if (!Object.keys(reason.fieldErrors).length) toast.error(reason.message)
+        else if (unmappedFields.length) toast.error(reason.fieldErrors[unmappedFields[0]]?.[0] ?? firstErrorMessage(reason, "Unable to save the budget."))
       } else {
-        setSubmitError("Unable to save the budget. Please try again.")
+        toast.error(firstErrorMessage(reason, "Unable to save the budget. Please try again."))
       }
     }
   })
@@ -67,7 +68,6 @@ export function BudgetFormDialog({ open, period, budget, categories, onOpenChang
           <DialogDescription>{budget ? `Update the planned amount for ${budget.category.name}.` : "Set a monthly spending limit for an expense category."}</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={submit}>
-          {submitError && <Alert variant="destructive"><AlertDescription>{submitError}</AlertDescription></Alert>}
           {!budget && (
             <div className="space-y-2">
               <Label>Expense category</Label>

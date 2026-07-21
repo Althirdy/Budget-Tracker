@@ -1,5 +1,6 @@
 import { AlertCircle, Plus, RefreshCw, Search, Tags } from "lucide-react"
 import { useDeferredValue, useMemo, useState } from "react"
+import { toast } from "sonner"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -11,6 +12,7 @@ import { CategoryFormDialog } from "@/features/categories/components/category-fo
 import { CategoryTable } from "@/features/categories/components/category-table"
 import type { Category, CategoryStatus, CategoryType } from "@/features/categories/model/category-types"
 import { useCategories } from "@/features/categories/model/use-categories"
+import { firstErrorMessage } from "@/lib/http/api-error"
 
 type TypeFilter = CategoryType | "all"
 
@@ -22,7 +24,6 @@ export function CategoriesPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [archivingCategory, setArchivingCategory] = useState<Category | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
 
   const filters = useMemo(() => ({ status, type: type === "all" ? undefined : type, search: deferredSearch || undefined }), [deferredSearch, status, type])
   const { categories, isLoading, error, refresh, create, update, archive, restore } = useCategories(filters)
@@ -31,8 +32,7 @@ export function CategoriesPage() {
   const openEdit = (category: Category) => { setEditingCategory(category); setFormOpen(true) }
 
   const restoreItem = async (category: Category) => {
-    setActionError(null)
-    try { await restore(category.id) } catch (reason) { setActionError(reason instanceof Error ? reason.message : "Unable to restore this category.") }
+    try { await restore(category.id); toast.success(`${category.name} was restored`) } catch (reason) { toast.error(firstErrorMessage(reason, "Unable to restore this category.")) }
   }
 
   return (
@@ -48,7 +48,7 @@ export function CategoriesPage() {
         <div className="flex border" role="group" aria-label="Category status"><Button className="flex-1" size="sm" variant={status === "active" ? "secondary" : "ghost"} onClick={() => setStatus("active")}>Active</Button><Button className="flex-1" size="sm" variant={status === "archived" ? "secondary" : "ghost"} onClick={() => setStatus("archived")}>Archived</Button></div>
       </div>
 
-      {(error || actionError) && <Alert variant="destructive"><AlertCircle /><AlertTitle>Unable to complete the request</AlertTitle><AlertDescription>{error ?? actionError}</AlertDescription><Button variant="outline" size="sm" className="mt-2" onClick={() => void refresh()}><RefreshCw />Try again</Button></Alert>}
+      {error && <Alert variant="destructive"><AlertCircle /><AlertTitle>Unable to load categories</AlertTitle><AlertDescription>{error}</AlertDescription><Button variant="outline" size="sm" className="mt-2" onClick={() => void refresh()}><RefreshCw />Try again</Button></Alert>}
 
       {isLoading ? (
         <div className="space-y-2 border p-4" aria-label="Loading categories">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-12 w-full" />)}</div>

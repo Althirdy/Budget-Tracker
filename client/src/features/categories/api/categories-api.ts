@@ -2,17 +2,18 @@ import axios from "axios"
 
 import type { Category, CategoryFilters, CategoryPayload } from "@/features/categories/model/category-types"
 import { httpClient } from "@/lib/http/client"
+import { ApiError } from "@/lib/http/api-error"
 
 interface CategoryResponse { data: Category }
 interface CategoryCollectionResponse { data: Category[] }
 interface ValidationErrorResponse { message?: string; errors?: Record<string, string[]> }
 
-export class CategoryApiError extends Error {
+export class CategoryApiError extends ApiError {
   constructor(
     message: string,
-    public readonly fieldErrors: Record<string, string[]> = {}
+    fieldErrors: Record<string, string[]> = {}
   ) {
-    super(message)
+    super(message, fieldErrors)
     this.name = "CategoryApiError"
   }
 }

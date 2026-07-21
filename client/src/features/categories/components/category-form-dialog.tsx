@@ -1,9 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { LoaderCircle } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { Controller, useForm } from "react-hook-form"
+import { toast } from "sonner"
 
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,7 @@ import { CategoryApiError } from "@/features/categories/api/categories-api"
 import { categoryIconLabels, categoryIconMap } from "@/features/categories/model/category-icons"
 import { categorySchema, type CategoryFormValues } from "@/features/categories/model/category-schema"
 import { categoryIcons, type Category, type CategoryPayload } from "@/features/categories/model/category-types"
+import { firstErrorMessage } from "@/lib/http/api-error"
 
 interface CategoryFormDialogProps {
   open: boolean
@@ -24,29 +25,30 @@ interface CategoryFormDialogProps {
 const defaults: CategoryFormValues = { name: "", type: "expense", color: "#F97316", icon: "shopping-cart" }
 
 export function CategoryFormDialog({ open, category, onOpenChange, onSubmit }: CategoryFormDialogProps) {
-  const [submitError, setSubmitError] = useState<string | null>(null)
   const { register, control, handleSubmit, reset, setError, setValue, watch, formState: { errors, isSubmitting } } = useForm<CategoryFormValues>({ resolver: zodResolver(categorySchema), defaultValues: defaults })
 
   useEffect(() => {
     reset(category ? { name: category.name, type: category.type, color: category.color, icon: category.icon } : defaults)
-    setSubmitError(null)
   }, [category, open, reset])
 
   const selectedColor = watch("color")
 
   const submit = handleSubmit(async (values) => {
-    setSubmitError(null)
     try {
       await onSubmit({ ...values, color: values.color.toUpperCase() })
       onOpenChange(false)
+      toast.success(category ? "Category updated" : "Category created")
     } catch (reason) {
       if (reason instanceof CategoryApiError) {
-        Object.entries(reason.fieldErrors).forEach(([field, messages]) => {
+        const entries = Object.entries(reason.fieldErrors)
+        const unmapped = entries.filter(([field]) => !(field in defaults))
+        entries.forEach(([field, messages]) => {
           if (field in defaults) setError(field as keyof CategoryFormValues, { message: messages[0] })
         })
-        setSubmitError(Object.keys(reason.fieldErrors).length ? null : reason.message)
+        if (!entries.length) toast.error(reason.message)
+        else if (unmapped.length) toast.error(unmapped.flatMap(([, messages]) => messages)[0] ?? firstErrorMessage(reason, "Unable to save the category."))
       } else {
-        setSubmitError("Unable to save the category. Please try again.")
+        toast.error(firstErrorMessage(reason, "Unable to save the category. Please try again."))
       }
     }
   })
@@ -59,7 +61,6 @@ export function CategoryFormDialog({ open, category, onOpenChange, onSubmit }: C
           <DialogDescription>Categories organize transactions and budget reporting.</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={submit}>
-          {submitError && <Alert variant="destructive"><AlertDescription>{submitError}</AlertDescription></Alert>}
           <div className="space-y-2">
             <Label htmlFor="category-name">Name</Label>
             <Input id="category-name" autoFocus aria-invalid={Boolean(errors.name)} {...register("name")} />
