@@ -93,3 +93,11 @@ Budget -> one User and one expense Category
 The database and application layer enforce one budget per user, category, and month. The client never submits `user_id`; all operations begin from `User::budgets()`. Budget deletion is permanent because transactions do not reference budget IDs. Archived categories remain available when loading historical budgets.
 
 Version one stores PHP planned amounts only. Spent, remaining, progress, and rollover calculations belong to the Transactions integration and must not be approximated in the Budget feature.
+
+## Financial Accounts
+
+Accounts follow the same authenticated vertical-slice flow as Categories. Every operation begins from `User::accounts()`, currency is fixed to PHP by the server, and deletion archives the record so future transaction history remains valid.
+
+Closed backend values such as account type and icon are PHP backed enums and are validated with `Rule::enum`. React mirrors these public API values with readonly constant arrays and derived TypeScript unions. The backend remains the source of truth; client constants provide compile-time safety and must be updated whenever the public enum contract changes.
+
+Accounts store an opening balance only. Credit-card opening balances are positive amounts owed. Current balances, transfers, adjustments, and reconciliation must be derived from the future Transactions feature rather than written directly to accounts.
