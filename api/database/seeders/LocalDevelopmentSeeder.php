@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Account;
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\User;
@@ -68,6 +69,21 @@ final class LocalDevelopmentSeeder extends Seeder
                     'amount' => $amount,
                     'currency' => 'PHP',
                 ],
+            );
+        }
+
+        $accounts = [
+            ['name' => 'Cash Wallet', 'type' => 'cash', 'opening_balance' => '2500.00', 'color' => '#F97316', 'icon' => 'wallet'],
+            ['name' => 'Checking Account', 'type' => 'checking', 'opening_balance' => '25000.00', 'color' => '#3B82F6', 'icon' => 'landmark'],
+            ['name' => 'Savings', 'type' => 'savings', 'opening_balance' => '75000.00', 'color' => '#22C55E', 'icon' => 'piggy-bank'],
+            ['name' => 'GCash', 'type' => 'e-wallet', 'opening_balance' => '1500.00', 'color' => '#06B6D4', 'icon' => 'smartphone'],
+            ['name' => 'Credit Card', 'type' => 'credit-card', 'opening_balance' => '5000.00', 'color' => '#EF4444', 'icon' => 'credit-card'],
+        ];
+
+        foreach ($accounts as $account) {
+            Account::withTrashed()->updateOrCreate(
+                ['user_id' => $user->id, 'name' => $account['name']],
+                [...$account, 'currency' => 'PHP', 'deleted_at' => null],
             );
         }
     }

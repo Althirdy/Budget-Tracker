@@ -1,6 +1,7 @@
 <?php
 
 use App\Features\Auth\Http\Controllers\AuthController;
+use App\Features\Accounts\Http\Controllers\AccountController;
 use App\Features\Budgets\Http\Controllers\BudgetController;
 use App\Features\Categories\Http\Controllers\CategoryController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,12 @@ Route::prefix('v1')->group(function (): void {
     });
 
     Route::middleware('auth:sanctum')->group(function (): void {
+        Route::get('/accounts', [AccountController::class, 'index']);
+        Route::post('/accounts', [AccountController::class, 'store']);
+        Route::put('/accounts/{account}', [AccountController::class, 'update']);
+        Route::delete('/accounts/{account}', [AccountController::class, 'destroy']);
+        Route::post('/accounts/{account}/restore', [AccountController::class, 'restore']);
+
         Route::get('/categories', [CategoryController::class, 'index']);
         Route::post('/categories', [CategoryController::class, 'store']);
         Route::put('/categories/{category}', [CategoryController::class, 'update']);
