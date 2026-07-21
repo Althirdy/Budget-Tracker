@@ -8,6 +8,7 @@ import { GuestRoute } from "@/features/auth/routes/guest-route"
 import { ProtectedRoute } from "@/features/auth/routes/protected-route"
 import { useAuth } from "@/features/auth/model/auth-context"
 import { CategoriesPage } from "@/features/categories/pages/categories-page"
+import { BudgetsPage } from "@/features/budgets/pages/budgets-page"
 
 function HomeRedirect() {
   const { status } = useAuth()
@@ -29,7 +30,7 @@ export function AppRouter() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<OverviewPage />} />
-          <Route path="budgets" element={<PlaceholderPage title="Budgets" />} />
+          <Route path="budgets" element={<BudgetsPage />} />
           <Route path="transactions" element={<PlaceholderPage title="Transactions" />} />
           <Route path="accounts" element={<PlaceholderPage title="Accounts" />} />
           <Route path="categories" element={<CategoriesPage />} />
