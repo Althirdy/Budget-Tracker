@@ -107,3 +107,9 @@ Accounts store an opening balance only. Credit-card opening balances are positiv
 CRUD API clients throw the shared `ApiError` contract with a user-facing message and Laravel field errors. A form maps recognized field errors to React Hook Form so messages appear beside the relevant input. Errors without a visible matching field, including restore and archive failures, use the global Sonner toast. Successful mutations also use concise toasts.
 
 Hooks remain notification-free: they return data or throw errors, while the component that owns the user action owns its notification. Blocking list-load failures remain inline with a retry action because they represent page state rather than transient feedback.
+
+## Transaction Ledger and Server State
+
+Transactions are logical user-facing records backed by signed account entries. Income and expenses create one entry; transfers create source and destination entries atomically. Account current balances and monthly budget progress are derived from active ledger activity, never written directly by the client.
+
+TanStack Query owns financial server state. Each feature defines stable query keys and mutation hooks, while transaction mutations invalidate Transactions, Accounts, and Budgets together. Query hooks never show notifications; the component that initiated the action remains responsible for toast feedback.

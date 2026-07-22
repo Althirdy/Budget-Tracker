@@ -32,6 +32,12 @@ final class Category extends Model
         return $this->hasMany(Budget::class);
     }
 
+    /** @return HasMany<Transaction, $this> */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {

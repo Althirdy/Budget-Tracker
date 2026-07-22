@@ -1,11 +1,11 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen } from "@/test/render"
 import { http, HttpResponse } from "msw"
 
 import { BudgetsPage } from "@/features/budgets/pages/budgets-page"
 import { server } from "@/test/server"
 
 const category = { id: 2, name: "Groceries", type: "expense", color: "#F97316", icon: "shopping-cart", is_archived: false, created_at: "2026-07-21T00:00:00Z", updated_at: "2026-07-21T00:00:00Z" }
-const budget = { id: 1, period: "2026-07", amount: "5000.00", currency: "PHP", category: { id: 2, name: "Groceries", color: "#F97316", icon: "shopping-cart", is_archived: false }, created_at: "2026-07-21T00:00:00Z", updated_at: "2026-07-21T00:00:00Z" }
+const budget = { id: 1, period: "2026-07", amount: "5000.00", spent: "1200.00", remaining: "3800.00", progress_percentage: "24.00", currency: "PHP", category: { id: 2, name: "Groceries", color: "#F97316", icon: "shopping-cart", is_archived: false }, created_at: "2026-07-21T00:00:00Z", updated_at: "2026-07-21T00:00:00Z" }
 
 describe("BudgetsPage", () => {
   it("renders the monthly planned total and category budget", async () => {

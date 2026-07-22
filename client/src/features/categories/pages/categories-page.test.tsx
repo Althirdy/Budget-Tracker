@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen } from "@/test/render"
 import { http, HttpResponse } from "msw"
 
 import { CategoriesPage } from "@/features/categories/pages/categories-page"

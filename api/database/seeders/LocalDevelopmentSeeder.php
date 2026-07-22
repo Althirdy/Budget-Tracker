@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\User;
+use App\Features\Transactions\Application\Services\TransactionWriter;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -86,5 +87,40 @@ final class LocalDevelopmentSeeder extends Seeder
                 [...$account, 'currency' => 'PHP', 'deleted_at' => null],
             );
         }
+
+        $writer = app(TransactionWriter::class);
+        $transactions = [
+            ['type' => 'income', 'account' => 'Checking Account', 'category' => 'Salary', 'amount' => '45000.00', 'description' => 'Monthly salary'],
+            ['type' => 'expense', 'account' => 'Cash Wallet', 'category' => 'Groceries', 'amount' => '1800.00', 'description' => 'Weekly groceries'],
+            ['type' => 'expense', 'account' => 'Credit Card', 'category' => 'Utilities', 'amount' => '2200.00', 'description' => 'Internet bill'],
+        ];
+
+        foreach ($transactions as $data) {
+            $transaction = $user->transactions()->withTrashed()->firstOrNew([
+                'description' => $data['description'],
+                'transaction_date' => now()->startOfMonth()->addDays(2)->toDateString(),
+            ]);
+            if ($transaction->trashed()) $transaction->restore();
+            $writer->fill($user, $transaction, [
+                'type' => $data['type'], 'amount' => $data['amount'],
+                'transaction_date' => now()->startOfMonth()->addDays(2)->toDateString(),
+                'description' => $data['description'], 'notes' => null,
+                'account_id' => $user->accounts()->where('name', $data['account'])->firstOrFail()->id,
+                'category_id' => $user->categories()->where('name', $data['category'])->firstOrFail()->id,
+            ]);
+        }
+
+        $transfer = $user->transactions()->withTrashed()->firstOrNew([
+            'description' => 'Move money to savings',
+            'transaction_date' => now()->startOfMonth()->addDays(3)->toDateString(),
+        ]);
+        if ($transfer->trashed()) $transfer->restore();
+        $writer->fill($user, $transfer, [
+            'type' => 'transfer', 'amount' => '5000.00',
+            'transaction_date' => now()->startOfMonth()->addDays(3)->toDateString(),
+            'description' => 'Move money to savings', 'notes' => null,
+            'source_account_id' => $user->accounts()->where('name', 'Checking Account')->firstOrFail()->id,
+            'destination_account_id' => $user->accounts()->where('name', 'Savings')->firstOrFail()->id,
+        ]);
     }
 }

@@ -1,53 +1,23 @@
-import { useCallback, useEffect, useState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import {
-  archiveCategory,
-  createCategory,
-  listCategories,
-  restoreCategory,
-  updateCategory,
-} from "@/features/categories/api/categories-api"
-import type { Category, CategoryFilters, CategoryPayload } from "@/features/categories/model/category-types"
+import { archiveCategory, createCategory, listCategories, restoreCategory, updateCategory } from "@/features/categories/api/categories-api"
+import type { CategoryFilters, CategoryPayload } from "@/features/categories/model/category-types"
+
+export const categoryKeys = { all: ["categories"] as const, list: (filters: CategoryFilters) => ["categories", "list", filters] as const }
 
 export function useCategories(filters: CategoryFilters) {
-  const { status, type, search } = filters
-  const [categories, setCategories] = useState<Category[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const refresh = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      setCategories(await listCategories({ status, type, search }))
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to load categories.")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [search, status, type])
-
-  useEffect(() => { void refresh() }, [refresh])
-
-  const create = async (payload: CategoryPayload) => {
-    await createCategory(payload)
-    await refresh()
+  const client = useQueryClient()
+  const query = useQuery({ queryKey: categoryKeys.list(filters), queryFn: () => listCategories(filters) })
+  const invalidate = () => client.invalidateQueries({ queryKey: categoryKeys.all })
+  const createMutation = useMutation({ mutationFn: createCategory, onSuccess: invalidate })
+  const updateMutation = useMutation({ mutationFn: ({ id, payload }: { id: number; payload: CategoryPayload }) => updateCategory(id, payload), onSuccess: invalidate })
+  const archiveMutation = useMutation({ mutationFn: archiveCategory, onSuccess: invalidate })
+  const restoreMutation = useMutation({ mutationFn: restoreCategory, onSuccess: invalidate })
+  return {
+    categories: query.data ?? [], isLoading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null, refresh: query.refetch,
+    create: async (payload: CategoryPayload) => { await createMutation.mutateAsync(payload) },
+    update: async (id: number, payload: CategoryPayload) => { await updateMutation.mutateAsync({ id, payload }) },
+    archive: async (id: number) => { await archiveMutation.mutateAsync(id) }, restore: async (id: number) => { await restoreMutation.mutateAsync(id) },
   }
-
-  const update = async (id: number, payload: CategoryPayload) => {
-    await updateCategory(id, payload)
-    await refresh()
-  }
-
-  const archive = async (id: number) => {
-    await archiveCategory(id)
-    await refresh()
-  }
-
-  const restore = async (id: number) => {
-    await restoreCategory(id)
-    await refresh()
-  }
-
-  return { categories, isLoading, error, refresh, create, update, archive, restore }
 }

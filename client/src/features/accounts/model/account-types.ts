@@ -11,6 +11,7 @@ export interface Account {
   name: string
   type: AccountType
   opening_balance: string
+  current_balance: string
   currency: "PHP"
   color: string
   icon: AccountIconName

@@ -12,6 +12,9 @@ export interface Budget {
   id: number
   period: string
   amount: string
+  spent: string
+  remaining: string
+  progress_percentage: string
   currency: "PHP"
   category: BudgetCategory
   created_at: string
