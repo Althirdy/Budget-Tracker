@@ -16,11 +16,21 @@ final class ListBudgets
     {
         $periodDate = CarbonImmutable::createFromFormat('!Y-m', $period)->toDateString();
 
-        return $user->budgets()
+        $budgets = $user->budgets()
             ->with('category')
             ->whereDate('period', $periodDate)
             ->get()
             ->sortBy('category.name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
+
+        $start = CarbonImmutable::parse($periodDate)->startOfMonth();
+        $spentByCategory = $user->transactions()
+            ->where('type', 'expense')
+            ->whereBetween('transaction_date', [$start->toDateString(), $start->endOfMonth()->toDateString()])
+            ->selectRaw('category_id, SUM(amount) as spent_total')
+            ->groupBy('category_id')
+            ->pluck('spent_total', 'category_id');
+
+        return $budgets->each(fn (Budget $budget) => $budget->setAttribute('spent_total', (string) ($spentByCategory[$budget->category_id] ?? '0.00')));
     }
 }

@@ -4,7 +4,7 @@ import { archiveAccount, createAccount, listAccounts, restoreAccount, updateAcco
 import type { Account, AccountPayload } from "@/features/accounts/model/account-types"
 import { server } from "@/test/server"
 
-const account: Account = { id: 1, name: "Cash Wallet", type: "cash", opening_balance: "2500.00", currency: "PHP", color: "#F97316", icon: "wallet", is_liability: false, is_archived: false, created_at: "2026-07-21T00:00:00Z", updated_at: "2026-07-21T00:00:00Z" }
+const account: Account = { id: 1, name: "Cash Wallet", type: "cash", opening_balance: "2500.00", current_balance: "2500.00", currency: "PHP", color: "#F97316", icon: "wallet", is_liability: false, is_archived: false, created_at: "2026-07-21T00:00:00Z", updated_at: "2026-07-21T00:00:00Z" }
 const payload: AccountPayload = { name: "Cash Wallet", type: "cash", opening_balance: "2500.00", color: "#F97316", icon: "wallet" }
 
 describe("accounts API", () => {

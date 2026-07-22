@@ -32,6 +32,9 @@ final class ListAccounts
             $query->where('name', 'like', '%'.$filters['search'].'%');
         }
 
-        return $query->orderBy('type')->orderBy('name')->get();
+        return $query
+            ->withSum(['transactionEntries as ledger_total' => fn ($entries) => $entries
+                ->whereHas('transaction', fn ($transaction) => $transaction->whereDate('transaction_date', '<=', today()))], 'balance_delta')
+            ->orderBy('type')->orderBy('name')->get();
     }
 }

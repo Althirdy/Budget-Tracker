@@ -1,0 +1,10 @@
+import { Pencil, RotateCcw, Trash2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import type { Transaction } from "@/features/transactions/model/transaction-types"
+const php = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" })
+interface Props { transactions: Transaction[]; onEdit: (item: Transaction) => void; onDelete: (item: Transaction) => void; onRestore: (item: Transaction) => void }
+export function TransactionTable({ transactions, onEdit, onDelete, onRestore }: Props) {
+  return <div className="border"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Transaction</TableHead><TableHead>Account</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="w-24 text-right">Actions</TableHead></TableRow></TableHeader><TableBody>{transactions.map((item) => <TableRow key={item.id}><TableCell>{item.transaction_date}</TableCell><TableCell><p className="font-medium">{item.description}</p><div className="mt-1 flex gap-2"><Badge variant={item.type === "expense" ? "secondary" : "default"}>{item.type}</Badge>{item.category && <span className="text-xs text-muted-foreground">{item.category.name}</span>}</div></TableCell><TableCell>{item.type === "transfer" ? `${item.source_account?.name} → ${item.destination_account?.name}` : item.account?.name}</TableCell><TableCell className="text-right font-mono font-medium">{php.format(Number(item.amount))}</TableCell><TableCell><div className="flex justify-end gap-1">{item.is_deleted ? <Button size="icon-sm" variant="ghost" aria-label={`Restore ${item.description}`} onClick={() => onRestore(item)}><RotateCcw /></Button> : <><Button size="icon-sm" variant="ghost" aria-label={`Edit ${item.description}`} onClick={() => onEdit(item)}><Pencil /></Button><Button size="icon-sm" variant="ghost" aria-label={`Delete ${item.description}`} onClick={() => onDelete(item)}><Trash2 /></Button></>}</div></TableCell></TableRow>)}</TableBody></Table></div>
+}

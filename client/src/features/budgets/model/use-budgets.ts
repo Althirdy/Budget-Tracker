@@ -1,47 +1,23 @@
-import { useCallback, useEffect, useState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { createBudget, deleteBudget, listBudgets, updateBudget } from "@/features/budgets/api/budgets-api"
-import type { Budget, BudgetListMeta, CreateBudgetPayload } from "@/features/budgets/model/budget-types"
+import type { BudgetListMeta, CreateBudgetPayload } from "@/features/budgets/model/budget-types"
 
 const emptyMeta = (period: string): BudgetListMeta => ({ planned_total: "0.00", currency: "PHP", period })
+export const budgetKeys = { all: ["budgets"] as const, list: (period: string) => ["budgets", "list", period] as const }
 
 export function useBudgets(period: string) {
-  const [budgets, setBudgets] = useState<Budget[]>([])
-  const [meta, setMeta] = useState<BudgetListMeta>(() => emptyMeta(period))
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const refresh = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    setMeta(emptyMeta(period))
-    try {
-      const result = await listBudgets(period)
-      setBudgets(result.data)
-      setMeta(result.meta)
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to load budgets.")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [period])
-
-  useEffect(() => { void refresh() }, [refresh])
-
-  const create = async (payload: CreateBudgetPayload) => {
-    await createBudget(payload)
-    await refresh()
+  const client = useQueryClient()
+  const query = useQuery({ queryKey: budgetKeys.list(period), queryFn: () => listBudgets(period) })
+  const invalidate = () => client.invalidateQueries({ queryKey: budgetKeys.all })
+  const createMutation = useMutation({ mutationFn: createBudget, onSuccess: invalidate })
+  const updateMutation = useMutation({ mutationFn: ({ id, amount }: { id: number; amount: string }) => updateBudget(id, { amount }), onSuccess: invalidate })
+  const deleteMutation = useMutation({ mutationFn: deleteBudget, onSuccess: invalidate })
+  return {
+    budgets: query.data?.data ?? [], meta: query.data?.meta ?? emptyMeta(period), isLoading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null, refresh: query.refetch,
+    create: async (payload: CreateBudgetPayload) => { await createMutation.mutateAsync(payload) },
+    update: async (id: number, amount: string) => { await updateMutation.mutateAsync({ id, amount }) },
+    remove: async (id: number) => { await deleteMutation.mutateAsync(id) },
   }
-
-  const update = async (id: number, amount: string) => {
-    await updateBudget(id, { amount })
-    await refresh()
-  }
-
-  const remove = async (id: number) => {
-    await deleteBudget(id)
-    await refresh()
-  }
-
-  return { budgets, meta, isLoading, error, refresh, create, update, remove }
 }

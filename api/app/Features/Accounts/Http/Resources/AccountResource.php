@@ -13,11 +13,20 @@ final class AccountResource extends JsonResource
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
+        $ledgerTotal = $this->getAttribute('ledger_total');
+        if ($ledgerTotal === null) {
+            $ledgerTotal = $this->transactionEntries()
+                ->whereHas('transaction', fn ($query) => $query->whereDate('transaction_date', '<=', today()))
+                ->sum('balance_delta');
+        }
+        $currentBalance = bcadd((string) $this->opening_balance, (string) $ledgerTotal, 2);
+
         return [
             'id' => (int) $this->id,
             'name' => (string) $this->name,
             'type' => $this->type->value,
             'opening_balance' => (string) $this->opening_balance,
+            'current_balance' => $currentBalance,
             'currency' => (string) $this->currency,
             'color' => (string) $this->color,
             'icon' => (string) $this->icon,

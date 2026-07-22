@@ -9,6 +9,7 @@ use Database\Factories\AccountFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class Account extends Model
@@ -23,6 +24,12 @@ final class Account extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** @return HasMany<TransactionEntry, $this> */
+    public function transactionEntries(): HasMany
+    {
+        return $this->hasMany(TransactionEntry::class);
     }
 
     /** @return array<string, string> */

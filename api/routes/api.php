@@ -4,6 +4,7 @@ use App\Features\Auth\Http\Controllers\AuthController;
 use App\Features\Accounts\Http\Controllers\AccountController;
 use App\Features\Budgets\Http\Controllers\BudgetController;
 use App\Features\Categories\Http\Controllers\CategoryController;
+use App\Features\Transactions\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -26,6 +27,12 @@ Route::prefix('v1')->group(function (): void {
     });
 
     Route::middleware('auth:sanctum')->group(function (): void {
+        Route::get('/transactions', [TransactionController::class, 'index']);
+        Route::post('/transactions', [TransactionController::class, 'store']);
+        Route::put('/transactions/{transaction}', [TransactionController::class, 'update']);
+        Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy']);
+        Route::post('/transactions/{transaction}/restore', [TransactionController::class, 'restore']);
+
         Route::get('/accounts', [AccountController::class, 'index']);
         Route::post('/accounts', [AccountController::class, 'store']);
         Route::put('/accounts/{account}', [AccountController::class, 'update']);
